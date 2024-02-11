@@ -1,0 +1,8 @@
+[package]
+name = "sui-dca-bot"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[addresses]
+sui-dca-bot = "0x0"

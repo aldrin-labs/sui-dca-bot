@@ -20,6 +20,7 @@ module dca::dca {
     // === CONSTS ===
 
     const GAS_BUDGET_PER_TRADE: u64 = 25_000_000;
+    const BASE_FEES_BPS: u64 = 5;
 
     // === Error Codes ===
     
@@ -269,9 +270,14 @@ module dca::dca {
         dca.last_time_ms = clock::timestamp_ms(clock);
         dca.remaining_orders = dca.remaining_orders - 1;
 
+        // Comput and transfer fees to delegatee
+        let fee_amount = (dca.split_allocation * BASE_FEES_BPS) / 10_000;
+        let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
+        transfer::public_transfer(fees, dca.delegatee);
+
         let promise = TradePromise<Input, Output> {
             trader: dca.owner,
-            input: dca.split_allocation,
+            input: balance::value(&input_funds),
             min_price: dca.trade_params.min_price,
             max_price: dca.trade_params.max_price,
             output: none(),

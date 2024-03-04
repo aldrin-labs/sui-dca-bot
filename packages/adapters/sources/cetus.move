@@ -1,13 +1,10 @@
 module adapter::cetus_router {
     use cetus_clmm::config::GlobalConfig;
     use cetus_clmm::pool::Pool;
-    use cetus::router::{Self, CalculatedRouterSwapResult, CalculatedRouterSwapResultEvent};
-    use cetus::expect_swap;
-    use sui::balance;
+    use cetus::router;
     use std::option::{Self, Option};
     use sui::clock::Clock;
-    use sui::coin::{Self, Coin};
-    use sui::event;
+    use sui::coin::Coin;
     use sui::transfer;
     use sui::tx_context::TxContext;
     use dca::dca::{Self, TradePromise};

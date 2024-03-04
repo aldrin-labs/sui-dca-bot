@@ -1,4 +1,3 @@
-// TODO: Overflows + Numerical Precision
 module dca::dca {
     use std::option::{Option, Self, none, is_some};
     use sui::object::{Self, UID, ID};
@@ -6,21 +5,22 @@ module dca::dca {
     use sui::balance::{Self, Balance};
     use sui::clock::{Self, Clock};
     use sui::dynamic_field as df;
-    use sui::math;
     use sui::transfer;
     use sui::coin::{Coin, Self};
     use sui::event;
     use sui::sui::SUI;
 
-    use trade_proof::proof::{Self, TradeProof};
-
+    use dca::proof::{Self, TradeProof};
     use dca::time;
+    use dca::math::{mul, div};
     use dca::protocol_list::{Self, ProtocolList};
 
     // === CONSTS ===
 
     const GAS_BUDGET_PER_TRADE: u64 = 25_000_000;
     const BASE_FEES_BPS: u64 = 5;
+    const ORDER_LIMIT: u64 = 25_000;
+    const MINIMUM_FUNDING_PER_TRADE: u64 = 100_000;
 
     // === Error Codes ===
     
@@ -37,6 +37,8 @@ module dca::dca {
     const EAboveMaxPrice: u64 = 11;
     const EInactive: u64 = 12;
     const EUnfundedAccount: u64 = 13;
+    const ETotalOrdersAboveLimit: u64 = 14;
+    const EBelowMinimumFunding: u64 = 15;
 
     // === Structs ===
 
@@ -157,12 +159,13 @@ module dca::dca {
         assert_time_scale(time_scale);
         assert_every(every, time_scale);
         assert_how_many_orders(future_orders, every, time_scale);
+        assert_minimum_funding_per_trade(future_orders, coin::value(&input_funds));
 
         let input_funds = coin::into_balance(input_funds);
 
         let current_time = clock::timestamp_ms(clock);
         // At init-time we set split_allocation = outlay / total_orders
-        let split_allocation = math::divide_and_round_up(balance::value(&input_funds), future_orders);
+        let split_allocation = div(balance::value(&input_funds), future_orders);
 
         let dca_uid = object::new(ctx);
         let owner = sender(ctx);
@@ -271,7 +274,7 @@ module dca::dca {
         dca.remaining_orders = dca.remaining_orders - 1;
 
         // Comput and transfer fees to delegatee
-        let fee_amount = (dca.split_allocation * BASE_FEES_BPS) / 10_000;
+        let fee_amount = div(mul(dca.split_allocation, BASE_FEES_BPS), 10_000);
         let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
         transfer::public_transfer(fees, dca.delegatee);
 
@@ -353,6 +356,7 @@ module dca::dca {
         ctx: &mut TxContext,
     ) {
         assert_owner(dca, ctx);
+        assert_minimum_funding_per_trade(new_orders, coin::value(&input_funds));
         dca.active = true;
 
         let funds = coin::into_balance(input_funds);
@@ -379,6 +383,8 @@ module dca::dca {
         ctx: &mut TxContext,
     ) {
         dca.remaining_orders = dca.remaining_orders + new_orders;
+
+        assert_minimum_funding_per_trade(dca.remaining_orders, balance::value(&dca.input_balance));
 
         let gas_budget = coin::into_balance(
             coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)
@@ -423,6 +429,7 @@ module dca::dca {
         
         // Recompute split_allocation
         recompute_split_allocation(dca);
+        assert_minimum_funding_per_trade(dca.remaining_orders, balance::value(&dca.input_balance));
 
         // Return funds
         (funds, gas_budget)
@@ -535,7 +542,7 @@ module dca::dca {
     }
     
     fun recompute_split_allocation_unsafe<Input, Output>(dca: &mut DCA<Input, Output>) {
-        dca.split_allocation = math::divide_and_round_up(balance::value(&dca.input_balance), dca.remaining_orders);
+        dca.split_allocation = div(balance::value(&dca.input_balance), dca.remaining_orders);
     }
 
     fun set_inactive<Input, Output>(dca: &mut DCA<Input, Output>) {
@@ -545,8 +552,7 @@ module dca::dca {
     }
 
     fun gas_budget_estimate(n_tx: u64): u64 {
-        // TODO: Numerical precision + overflow
-        GAS_BUDGET_PER_TRADE * n_tx
+        mul(GAS_BUDGET_PER_TRADE, n_tx)
     }
 
     // === Assertions ===
@@ -596,8 +602,12 @@ module dca::dca {
         assert!(is_ok, EInvalidEvery);
     }
     
-    fun assert_how_many_orders(_how_many_orders: u64, _every: u64, _time_scale: u8) {
-        // TODO: Depending on the time_scale and ever the restrictions on `how_many_orders` are different
+    fun assert_how_many_orders(how_many_orders: u64, _every: u64, _time_scale: u8) {
+        assert!(how_many_orders <= ORDER_LIMIT, ETotalOrdersAboveLimit);
+    }
+    
+    fun assert_minimum_funding_per_trade(funding_amount: u64, n_tx: u64) {
+        assert!(funding_amount >= mul(n_tx, MINIMUM_FUNDING_PER_TRADE), EBelowMinimumFunding);
     }
     
     fun assert_owner<Input, Output>(dca: &DCA<Input, Output>, ctx: &TxContext) {

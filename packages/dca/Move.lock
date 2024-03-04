@@ -2,12 +2,11 @@
 
 [move]
 version = 0
-manifest_digest = "D8D9983E0D5AB5F02C06A9AB795FE1DEBF3FDE454B981940B224E1F2C30C884A"
-deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+manifest_digest = "87EDF75381BE445F4D855892B3EE765A1A5C6F9319C7D105C8F3B76403642BA9"
+deps_digest = "F8BBB0CCB2491CA29A3DF03D6F92277A4F3574266507ACD77214D37ECA3F3082"
 
 dependencies = [
   { name = "Sui" },
-  { name = "TradeProof" },
 ]
 
 [[move.package]]
@@ -20,14 +19,6 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.19.1
 
 dependencies = [
   { name = "MoveStdlib" },
-]
-
-[[move.package]]
-name = "TradeProof"
-source = { local = "../trade-proof" }
-
-dependencies = [
-  { name = "Sui" },
 ]
 
 [move.toolchain-version]

@@ -1,4 +1,6 @@
-module trade_proof::proof {
+module dca::proof {
+    use dca::math::div;
+
     struct TradeProof<phantom W, phantom Input, phantom Output> has store, drop {
         input: u64,
         min_output: u64
@@ -12,7 +14,6 @@ module trade_proof::proof {
     }
 
     public fun min_price<W: drop, Input, Output>(trade_proof: &TradeProof<W, Input, Output>): u64 {
-        // TODO: numerical precision + overflows
-        trade_proof.input / trade_proof.min_output
+        div(trade_proof.input, trade_proof.min_output)
     }
 }

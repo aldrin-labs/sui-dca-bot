@@ -58,7 +58,6 @@ source = { local = "../dca" }
 
 dependencies = [
   { name = "Sui" },
-  { name = "TradeProof" },
 ]
 
 [[move.package]]
@@ -123,14 +122,6 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.19.1
 
 dependencies = [
   { name = "MoveStdlib" },
-]
-
-[[move.package]]
-name = "TradeProof"
-source = { local = "../trade-proof" }
-
-dependencies = [
-  { name = "Sui" },
 ]
 
 [[move.package]]

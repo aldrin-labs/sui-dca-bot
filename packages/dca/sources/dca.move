@@ -10,11 +10,16 @@ module dca::dca {
     use sui::transfer;
     use sui::coin::{Coin, Self};
     use sui::event;
+    use sui::sui::SUI;
 
     use trade_proof::proof::{Self, TradeProof};
 
     use dca::time;
     use dca::protocol_list::{Self, ProtocolList};
+
+    // === CONSTS ===
+
+    const GAS_BUDGET_PER_TRADE: u64 = 25_000_000;
 
     // === Error Codes ===
     
@@ -73,6 +78,7 @@ module dca::dca {
         split_allocation: u64, // amonut to withdraw each time
         trade_params: TradeParams,
         active: bool,
+        gas_budget: Balance<SUI>,
     }
 
     struct TradeParams has store, copy, drop {
@@ -120,6 +126,7 @@ module dca::dca {
         every: u64,
         future_orders: u64,
         time_scale: u8,
+        gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
     ) {
         let dca = new<Input, Output>(
@@ -129,6 +136,7 @@ module dca::dca {
             every,
             future_orders,
             time_scale,
+            gas_funds,
             ctx,
         );
 
@@ -142,6 +150,7 @@ module dca::dca {
         every: u64,
         future_orders: u64,
         time_scale: u8,
+        gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
     ): DCA<Input, Output> {
         assert_time_scale(time_scale);
@@ -163,6 +172,8 @@ module dca::dca {
             delegatee
         });
 
+        let gas_budget = coin::into_balance(coin::split(gas_funds, gas_budget_estimate(future_orders), ctx));
+
         DCA {
             id: dca_uid,
             owner,
@@ -176,6 +187,7 @@ module dca::dca {
             split_allocation,
             trade_params: TradeParams { min_price: none(), max_price: none() },
             active: true,
+            gas_budget,
         }
     }
     
@@ -187,6 +199,7 @@ module dca::dca {
         every: u64,
         future_orders: u64,
         time_scale: u8,
+        gas_funds: &mut Coin<SUI>,
         min_price: u64,
         max_price: u64,
         ctx: &mut TxContext,
@@ -198,6 +211,7 @@ module dca::dca {
             every,
             future_orders,
             time_scale,
+            gas_funds,
             min_price,
             max_price,
             ctx,
@@ -213,6 +227,7 @@ module dca::dca {
         every: u64,
         future_orders: u64,
         time_scale: u8,
+        gas_funds: &mut Coin<SUI>,
         min_price: u64,
         max_price: u64,
         ctx: &mut TxContext,
@@ -224,6 +239,7 @@ module dca::dca {
             every,
             future_orders,
             time_scale,
+            gas_funds,
             ctx,
         );
 
@@ -269,8 +285,9 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         promise: TradePromise<Input, Output>,
         protocol_list: &ProtocolList,
-        ctx: &TxContext,
-    ) {
+        gas_cost: u64,
+        ctx: &mut TxContext,
+    ): Coin<SUI> {
         // TODO: Tradepromise must have address
         let TradePromise { trader, input, min_price, max_price, output, dfs } = promise;
 
@@ -313,7 +330,11 @@ module dca::dca {
         // If no more trades to make, set DCA to inactive
         if (dca.remaining_orders == 0 || balance::value(&dca.input_balance) == 0) {
             set_inactive(dca);
-        }
+        };
+        
+        coin::from_balance(
+            balance::split(&mut dca.gas_budget, gas_cost), ctx
+        )
     }
 
     // === Funding Functions ===
@@ -322,7 +343,8 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         input_funds: Coin<Input>,
         new_orders: u64,
-        ctx: &TxContext,
+        gas_funds: &mut Coin<SUI>,
+        ctx: &mut TxContext,
     ) {
         assert_owner(dca, ctx);
         dca.active = true;
@@ -334,15 +356,29 @@ module dca::dca {
 
         dca.remaining_orders = dca.remaining_orders + new_orders;
 
+        let gas_budget = coin::into_balance(
+            coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)
+        );
+
+        balance::join(&mut dca.gas_budget, gas_budget);
+
         // Recompute split_allocation
         recompute_split_allocation(dca);
     }
     
     public fun increase_remaining_orders<Input, Output>(
         dca: &mut DCA<Input, Output>,
+        gas_funds: &mut Coin<SUI>,
         new_orders: u64,
+        ctx: &mut TxContext,
     ) {
         dca.remaining_orders = dca.remaining_orders + new_orders;
+
+        let gas_budget = coin::into_balance(
+            coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)
+        );
+
+        balance::join(&mut dca.gas_budget, gas_budget);
 
         // Recompute split allocation
         recompute_split_allocation(dca);
@@ -355,10 +391,12 @@ module dca::dca {
         ctx: &mut TxContext,
     ) {
         // Assertions made in the inner function call
-        let funds = withdraw_input_(dca, amount, decrease_orders, ctx);
+        let (funds, gas_budget) = withdraw_input_(dca, amount, decrease_orders, ctx);
         let funds = coin::from_balance(funds, ctx);
+        let gas_budget = coin::from_balance(gas_budget, ctx);
 
         transfer::public_transfer(funds, dca.owner);
+        transfer::public_transfer(gas_budget, dca.owner);
     }
     
     public fun withdraw_input_<Input, Output>(
@@ -366,20 +404,32 @@ module dca::dca {
         amount: u64,
         decrease_orders: u64,
         ctx: &TxContext,
-    ): Balance<Input> {
+    ): (Balance<Input>, Balance<SUI>) {
         assert_owner(dca, ctx);
         assert_input_balance(&dca.input_balance, amount);
 
         // Withdraw funds
         let funds = balance::split(&mut dca.input_balance, amount);
         dca.remaining_orders = dca.remaining_orders - decrease_orders;
+
+        // Withdraw gas budget
+        let gas_budget = balance::split(&mut dca.gas_budget, gas_budget_estimate(decrease_orders));
         
         // Recompute split_allocation
         recompute_split_allocation(dca);
 
         // Return funds
-        funds
+        (funds, gas_budget)
     }
+    
+    public entry fun add_gas_budget<Input, Output>(
+        dca: &mut DCA<Input, Output>,
+        gas_funds: Coin<SUI>,
+    ) {
+        let gas_budget = coin::into_balance(gas_funds);
+        balance::join(&mut dca.gas_budget, gas_budget);
+    }
+    
 
     // === Destructor Functions ===
 
@@ -400,6 +450,7 @@ module dca::dca {
             split_allocation: _,
             trade_params: _,
             active: _,
+            gas_budget,
         } = dca;
 
         let sender = sender(ctx);
@@ -412,6 +463,11 @@ module dca::dca {
         } else {
             balance::destroy_zero(input_balance);
         };
+
+        transfer::public_transfer(
+            coin::from_balance(gas_budget, ctx),
+            owner            
+        );
 
         object::delete(id);
     }
@@ -480,6 +536,11 @@ module dca::dca {
         dca.split_allocation = 0;
         dca.remaining_orders = 0;
         dca.active = false;
+    }
+
+    fun gas_budget_estimate(n_tx: u64): u64 {
+        // TODO: Numerical precision + overflow
+        GAS_BUDGET_PER_TRADE * n_tx
     }
 
     // === Assertions ===
@@ -600,9 +661,11 @@ module dca::dca {
             split_allocation: _,
             trade_params: _,
             active: _,
+            gas_budget,
         } = dca;
 
         object::delete(id);
         balance::destroy_for_testing(input_balance);
+        balance::destroy_for_testing(gas_budget);
     }
 }

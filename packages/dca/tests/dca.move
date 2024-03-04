@@ -22,6 +22,8 @@ module dca::dca_tests {
     const FAKE_OWNER: address = @0x3;
     const FAKE_DELEGATEE: address = @0x4;
 
+    const GAS_BUDGET_PER_TRADE: u64 = 1;
+
     #[test]
     fun it_works_base_case_months() {
         let scenario = test_scenario::begin(OWNER);
@@ -174,6 +176,7 @@ module dca::dca_tests {
         clock::set_for_testing(&mut clock, clock_ts); // Mon Jan 01 2024 00:00:00 GMT+0000
 
         let outlay = coin::mint_for_testing<USDC>(outlay, ctx);
+        let gas_funds = coin::mint_for_testing<SUI>(GAS_BUDGET_PER_TRADE, ctx);
 
         // Initiate account
         let dca = dca::new<USDC, SUI>(
@@ -183,10 +186,12 @@ module dca::dca_tests {
             1, // every 1 month
             12, // for 12 months
             time_scale::month(),
+            &mut gas_funds,
             ctx,
         );
 
         let protocols = protocol_registry_for_testing(ctx);
+        coin::burn_for_testing(gas_funds);
 
         (dca, clock, protocols)
     }
@@ -208,8 +213,9 @@ module dca::dca_tests {
         // Mocks trade
         dca::add_trade_proof_with_coin(dummy_defi_wit(), &mut promise, 1_000, coin::mint_for_testing<Output>(10, ctx));
 
-        dca::resolve_trade<Input, Output, DummyDefi>(dca, promise, protocols, ctx);
+        let gas_budget = dca::resolve_trade<Input, Output, DummyDefi>(dca, promise, protocols, GAS_BUDGET_PER_TRADE, ctx);
         coin::burn_for_testing(coin);
+        coin::burn_for_testing(gas_budget);
     }
 
     #[test]
@@ -312,11 +318,12 @@ module dca::dca_tests {
         test_scenario::next_tx(&mut scenario, FAKE_OWNER);
         let ctx = ctx(&mut scenario);
 
-        let funds = dca::withdraw_input_(&mut dca, 12_000, 12, ctx);
+        let (funds, gas_budget) = dca::withdraw_input_(&mut dca, 12_000, 12, ctx);
         dca::destroy_for_testing(dca);
 
         // Finish testing
         balance::destroy_for_testing(funds);
+        balance::destroy_for_testing(gas_budget);
         clock::destroy_for_testing(clock);
         protocol_list::delete_for_testing(protocols);
         test_scenario::end(scenario);

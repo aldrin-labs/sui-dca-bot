@@ -1,0 +1,17 @@
+[package]
+name = "AftermathSwapCap"
+version = "0.0.1"
+published-at = "dc15721baa82ba64822d585a7349a1508f76d94ae80e899b06e48369c257750e"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
+DeepBook = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/deepbook", rev = "mainnet-v1.19.1" }
+AftermathAmm = { local = "../amm/amm" }
+InsuranceFund = { local = "../amm/amm-insurance-fund" }
+ProtocolFeeVault = { local = "../amm/amm-protocol-fee-vault" }
+ReferralVault = { local = "../amm/amm-referral-vault" }
+Treasury = { local = "../amm/amm-treasury" }
+
+[addresses]
+aftermath_swap_cap = "dc15721baa82ba64822d585a7349a1508f76d94ae80e899b06e48369c257750e"
+deepbook =  "000000000000000000000000000000000000000000000000000000000000dee9"

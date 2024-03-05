@@ -1,11 +1,11 @@
 [package]
 name = "DCA"
 version = "0.0.1"
-published-at = "0x"
+published-at = "0x331bd073c1ab384572ae157003e8ff3b9dd15ebdc5bcf4e25ae22fa698ed3bdc"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
 
 [addresses]
-dca = "0x"
+dca = "0x331bd073c1ab384572ae157003e8ff3b9dd15ebdc5bcf4e25ae22fa698ed3bdc"
 

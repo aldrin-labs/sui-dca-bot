@@ -30,15 +30,14 @@ module dca::dca {
     const EInvalidDelegatee: u64 = 4;
     const EInvalidAuthority: u64 = 5;
     const EInsufficientInputBalance: u64 = 6;
-    const EInsufficientOutputBalance: u64 = 7;
-    const ENotEnoughTimePassed: u64 = 8;
-    const ENoRemainingOrders: u64 = 9;
-    const EBelowMinPrice: u64 = 10;
-    const EAboveMaxPrice: u64 = 11;
-    const EInactive: u64 = 12;
-    const EUnfundedAccount: u64 = 13;
-    const ETotalOrdersAboveLimit: u64 = 14;
-    const EBelowMinimumFunding: u64 = 15;
+    const ENotEnoughTimePassed: u64 = 7;
+    const ENoRemainingOrders: u64 = 8;
+    const EBelowMinPrice: u64 = 9;
+    const EAboveMaxPrice: u64 = 10;
+    const EInactive: u64 = 11;
+    const EUnfundedAccount: u64 = 12;
+    const ETotalOrdersAboveLimit: u64 = 13;
+    const EBelowMinimumFunding: u64 = 14;
 
     // === Structs ===
 

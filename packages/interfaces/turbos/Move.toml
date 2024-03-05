@@ -1,10 +1,12 @@
 [package]
 name = "TurbosCLMM"
 version = "0.0.5"
-published-at = "0x84d1ad43e95e9833670fcdb2f2d9fb7618fe1827e3908f2c2bb842f3dccb80af"
+published-at = "0x9632f61a796fc54952d9151d80b319e066cba5498a27b495c99e113db09726b1"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir="crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
 
 [addresses]
-turbos_clmm = "0x84d1ad43e95e9833670fcdb2f2d9fb7618fe1827e3908f2c2bb842f3dccb80af"
+# Turbos Finance 3
+# https://suiscan.xyz/mainnet/object/0x9632f61a796fc54952d9151d80b319e066cba5498a27b495c99e113db09726b1
+turbos_clmm = "0x9632f61a796fc54952d9151d80b319e066cba5498a27b495c99e113db09726b1"

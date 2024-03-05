@@ -2,35 +2,15 @@
 
 [move]
 version = 0
-manifest_digest = "5FD4DD8FACEA812AEAF4BE2D601DB968BDE13BDE63200E5ED702E3526E71CDC0"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "44DBEB5465823281889F42A64A7D0FEA4F07989B3C7090E336D2706F98152F8E"
+deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 
 dependencies = [
-  { name = "AftermathAmm" },
   { name = "Cetus" },
-  { name = "CetusClmm" },
   { name = "DCA" },
   { name = "FlowXAMM" },
   { name = "Sui" },
   { name = "TurbosCLMM" },
-]
-
-[[move.package]]
-name = "AftermathAmm"
-source = { local = "../interfaces/aftermath/amm/amm" }
-
-dependencies = [
-  { name = "AmmMath" },
-  { name = "ProtocolFeeVault" },
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "AmmMath"
-source = { local = "../interfaces/aftermath/amm/amm-math" }
-
-dependencies = [
-  { name = "Sui" },
 ]
 
 [[move.package]]
@@ -69,14 +49,6 @@ dependencies = [
 ]
 
 [[move.package]]
-name = "InsuranceFund"
-source = { local = "../interfaces/aftermath/amm/amm-insurance-fund" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[[move.package]]
 name = "IntegerMate"
 source = { local = "../interfaces/cetus/integer-mate" }
 
@@ -97,39 +69,11 @@ name = "MoveStdlib"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.19.1", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
-name = "ProtocolFeeVault"
-source = { local = "../interfaces/aftermath/amm/amm-protocol-fee-vault" }
-
-dependencies = [
-  { name = "InsuranceFund" },
-  { name = "ReferralVault" },
-  { name = "Sui" },
-  { name = "Treasury" },
-  { name = "utilities" },
-]
-
-[[move.package]]
-name = "ReferralVault"
-source = { local = "../interfaces/aftermath/amm/amm-referral-vault" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[[move.package]]
 name = "Sui"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.19.1", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
   { name = "MoveStdlib" },
-]
-
-[[move.package]]
-name = "Treasury"
-source = { local = "../interfaces/aftermath/amm/amm-treasury" }
-
-dependencies = [
-  { name = "Sui" },
 ]
 
 [[move.package]]
@@ -139,16 +83,3 @@ source = { local = "../interfaces/turbos" }
 dependencies = [
   { name = "Sui" },
 ]
-
-[[move.package]]
-name = "utilities"
-source = { local = "../interfaces/aftermath/utility/utilities" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[move.toolchain-version]
-compiler-version = "1.19.1"
-edition = "legacy"
-flavor = "sui"

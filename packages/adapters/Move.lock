@@ -2,34 +2,14 @@
 
 [move]
 version = 0
-manifest_digest = "44DBEB5465823281889F42A64A7D0FEA4F07989B3C7090E336D2706F98152F8E"
-deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
+manifest_digest = "5E66C68F1E56649E48D735ABDC0C9B687C1D3DC1B591190BE3C8C6E63DDED614"
+deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
 
 dependencies = [
-  { name = "Cetus" },
   { name = "DCA" },
   { name = "FlowXAMM" },
   { name = "Sui" },
   { name = "TurbosCLMM" },
-]
-
-[[move.package]]
-name = "Cetus"
-source = { local = "../interfaces/cetus/cetus" }
-
-dependencies = [
-  { name = "CetusClmm" },
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "CetusClmm"
-source = { local = "../interfaces/cetus/cetus_clmm" }
-
-dependencies = [
-  { name = "IntegerMate" },
-  { name = "MoveSTL" },
-  { name = "Sui" },
 ]
 
 [[move.package]]
@@ -43,22 +23,6 @@ dependencies = [
 [[move.package]]
 name = "FlowXAMM"
 source = { local = "../interfaces/flow_x" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "IntegerMate"
-source = { local = "../interfaces/cetus/integer-mate" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "MoveSTL"
-source = { local = "../interfaces/cetus/move-stl" }
 
 dependencies = [
   { name = "Sui" },

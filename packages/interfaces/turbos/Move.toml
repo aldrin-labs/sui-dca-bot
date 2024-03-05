@@ -9,4 +9,4 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir="crates/sui-framew
 [addresses]
 # Turbos Finance 3
 # https://suiscan.xyz/mainnet/object/0x9632f61a796fc54952d9151d80b319e066cba5498a27b495c99e113db09726b1
-turbos_clmm = "0x9632f61a796fc54952d9151d80b319e066cba5498a27b495c99e113db09726b1"
+turbos_clmm = "0x91bfbc386a41afcfd9b2533058d7e915a1d3829089cc268ff4333d54d6339ca1"

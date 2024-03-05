@@ -1,13 +1,13 @@
 [package]
 name = "Adapter"
 version = "0.0.1"
-published-at = "0x954e404cdd15b5859c18425b737d848d28f7f63ae6b74e9a2656784d1ae0683c"
+published-at = "0x619ddee0209596d388157f7408f9ddf9bac6c57fdd118301bc1b4ee8ea283edc"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir="crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
 TurbosCLMM = { local = "../interfaces/turbos" }
 FlowXAMM = { local = "../interfaces/flow_x" }
-Cetus = { local = "../interfaces/cetus/cetus" }
+# Cetus = { local = "../interfaces/cetus/cetus" }
 DCA = { local = "../dca" }
 
 [addresses]

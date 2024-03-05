@@ -1,241 +1,264 @@
 // wrapper for module turbos_clmm::swap_router
-module adapter::turbos {
-    use sui::tx_context::{TxContext};
+#[allow(lint(self_transfer))]
+module dca::turbos {
+    use sui::tx_context::{TxContext, sender};
     use turbos_clmm::swap_router;
     use turbos_clmm::pool::{Pool, Versioned};
-	use sui::coin::{Coin};
+	use sui::coin;
     use sui::clock::Clock;
-    use dca::dca::{Self, TradePromise};
+    use sui::transfer;
+    use dca::dca::{Self, DCA, init_trade, resolve_trade};
 
-    // Errors
-    const ETradeInputAmountMismatch: u64 = 1;
-
-    // Witness object
-    struct Turbos has drop {}
+    const EMinOutputBelowThreshold: u64 = 1;
 
     public fun swap_a_b<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
-		coins_a: vector<Coin<CoinTypeA>>, 
-		amount: u64, // Input Trade amount
-        amount_threshold: u64,
+        amount_threshold: u64, // TODO: Minimum output amount
         sqrt_price_limit: u128,
         is_exact_in: bool,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
-        promise: &mut TradePromise<CoinTypeA, CoinTypeB>,
+        dca: &mut DCA<CoinTypeA, CoinTypeB>,
+        gas_cost: u64,
 		ctx: &mut TxContext
     ) {
+        let (funds, promise) = init_trade(dca, clock, ctx);
+        let amount = coin::value(&funds);
+
+        let min_output = dca::trade_min_output(&promise);
         assert!(
-            dca::trade_input(promise) == amount,
-            ETradeInputAmountMismatch
+            amount_threshold >= min_output,
+            EMinOutputBelowThreshold
         );
 
         swap_router::swap_a_b(
             pool,
-            coins_a,
+            vector[funds],
             amount,
             amount_threshold,
             sqrt_price_limit,
             is_exact_in,
-            dca::trade_owner(promise),
+            dca::owner(dca),
             deadline,
             clock,
             versioned,
             ctx,
         );
 
-        dca::add_trade_proof(Turbos {}, promise, amount, amount_threshold);
+        let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
     }
 
     public fun swap_b_a<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
-		coins_b: vector<Coin<CoinTypeB>>, 
-		amount: u64,
         amount_threshold: u64,
         sqrt_price_limit: u128,
-        is_exact_in: bool,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
-        promise: &mut TradePromise<CoinTypeB, CoinTypeA>,
+        dca: &mut DCA<CoinTypeB, CoinTypeA>,
+        gas_cost: u64,
 		ctx: &mut TxContext
     ) {
+        let is_exact_in = true;
+
+        let (funds, promise) = init_trade(dca, clock, ctx);
+        let amount = coin::value(&funds);
+
+        let min_output = dca::trade_min_output(&promise);
         assert!(
-            dca::trade_input(promise) == amount,
-            ETradeInputAmountMismatch
+            amount_threshold >= min_output,
+            EMinOutputBelowThreshold
         );
 
         swap_router::swap_b_a(
             pool,
-            coins_b,
+            vector[funds],
             amount,
             amount_threshold,
             sqrt_price_limit,
             is_exact_in,
-            dca::trade_owner(promise),
+            dca::owner(dca),
             deadline,
             clock,
             versioned,
             ctx,
         );
 
-        dca::add_trade_proof(Turbos {}, promise, amount, amount_threshold);
+        let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
     }
 
     public fun swap_a_b_b_c<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeA, CoinTypeB, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeB, CoinTypeC, FeeTypeB>,
-		coins_a: vector<Coin<CoinTypeA>>, 
-		amount: u64,
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        is_exact_in: bool,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
-        promise: &mut TradePromise<CoinTypeA, CoinTypeC>,
+        dca: &mut DCA<CoinTypeA, CoinTypeC>,
+        gas_cost: u64,
 		ctx: &mut TxContext
     ) {
+        let is_exact_in = true;
+        let (funds, promise) = init_trade(dca, clock, ctx);
+        let amount = coin::value(&funds);
+
+        let min_output = dca::trade_min_output(&promise);
         assert!(
-            dca::trade_input(promise) == amount,
-            ETradeInputAmountMismatch
+            amount_threshold >= min_output,
+            EMinOutputBelowThreshold
         );
 
         swap_router::swap_a_b_b_c(
             pool_a,
             pool_b,
-            coins_a,
+            vector[funds],
             amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,
             is_exact_in,
-            dca::trade_owner(promise),
+            dca::owner(dca),
             deadline,
             clock,
             versioned,
             ctx,
         );
 
-        dca::add_trade_proof(Turbos {}, promise, amount, amount_threshold);
+        let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
     }
 
     public fun swap_a_b_c_b<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeA, CoinTypeB, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeC, CoinTypeB, FeeTypeB>,
-		coins_a: vector<Coin<CoinTypeA>>, 
-		amount: u64,
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        is_exact_in: bool,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
-        promise: &mut TradePromise<CoinTypeA, CoinTypeC>,
+        dca: &mut DCA<CoinTypeA, CoinTypeC>,
+        gas_cost: u64,
 		ctx: &mut TxContext
     ) {
+        let is_exact_in = true;
+        let (funds, promise) = init_trade(dca, clock, ctx);
+        let amount = coin::value(&funds);
+
+        let min_output = dca::trade_min_output(&promise);
         assert!(
-            dca::trade_input(promise) == amount,
-            ETradeInputAmountMismatch
+            amount_threshold >= min_output,
+            EMinOutputBelowThreshold
         );
 
         swap_router::swap_a_b_c_b(
             pool_a,
             pool_b,
-            coins_a,
+            vector[funds],
             amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,
             is_exact_in,
-            dca::trade_owner(promise),
+            dca::owner(dca),
             deadline,
             clock,
             versioned,
             ctx,
         );
 
-        dca::add_trade_proof(Turbos {}, promise, amount, amount_threshold);
+        let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
     }
 
     public fun swap_b_a_b_c<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeB, CoinTypeA, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeB, CoinTypeC, FeeTypeB>,
-		coins_a: vector<Coin<CoinTypeA>>, 
-		amount: u64,
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        is_exact_in: bool,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
-        promise: &mut TradePromise<CoinTypeA, CoinTypeC>,
+        dca: &mut DCA<CoinTypeA, CoinTypeC>,
+        gas_cost: u64,
 		ctx: &mut TxContext
     ) {
+        let is_exact_in = true;
+        let (funds, promise) = init_trade(dca, clock, ctx);
+        let amount = coin::value(&funds);
+
+        let min_output = dca::trade_min_output(&promise);
         assert!(
-            dca::trade_input(promise) == amount,
-            ETradeInputAmountMismatch
+            amount_threshold >= min_output,
+            EMinOutputBelowThreshold
         );
 
         swap_router::swap_b_a_b_c(
             pool_a,
             pool_b,
-            coins_a,
+            vector[funds],
             amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,
             is_exact_in,
-            dca::trade_owner(promise),
+            dca::owner(dca),
             deadline,
             clock,
             versioned,
             ctx,
         );
 
-        dca::add_trade_proof(Turbos {}, promise, amount, amount_threshold);
+        let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
     }
 
     public fun swap_b_a_c_b<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeB, CoinTypeA, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeC, CoinTypeB, FeeTypeB>,
-		coins_a: vector<Coin<CoinTypeA>>, 
-		amount: u64,
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        is_exact_in: bool,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
-        promise: &mut TradePromise<CoinTypeA, CoinTypeC>,
+        dca: &mut DCA<CoinTypeA, CoinTypeC>,
+        gas_cost: u64,
 		ctx: &mut TxContext
     ) {
+        let is_exact_in = true;
+        let (funds, promise) = init_trade(dca, clock, ctx);
+        let amount = coin::value(&funds);
+
+        let min_output = dca::trade_min_output(&promise);
         assert!(
-            dca::trade_input(promise) == amount,
-            ETradeInputAmountMismatch
+            amount_threshold >= min_output,
+            EMinOutputBelowThreshold
         );
 
         swap_router::swap_b_a_c_b(
             pool_a,
             pool_b,
-            coins_a,
+            vector[funds],
             amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,
             is_exact_in,
-            dca::trade_owner(promise),
+            dca::owner(dca),
             deadline,
             clock,
             versioned,
             ctx,
         );
 
-        dca::add_trade_proof(Turbos {}, promise, amount, amount_threshold);
+        let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
     }
 }

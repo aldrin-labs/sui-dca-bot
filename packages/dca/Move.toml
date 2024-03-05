@@ -6,6 +6,10 @@ published-at = "0x331bd073c1ab384572ae157003e8ff3b9dd15ebdc5bcf4e25ae22fa698ed3b
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
 
+TurbosCLMM = { local = "../interfaces/turbos" }
+FlowXAMM = { local = "../interfaces/flow_x" }
+Cetus = { local = "../interfaces/cetus/cetus" }
+
 [addresses]
 dca = "0x331bd073c1ab384572ae157003e8ff3b9dd15ebdc5bcf4e25ae22fa698ed3bdc"
 

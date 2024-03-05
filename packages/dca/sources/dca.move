@@ -1,19 +1,20 @@
 module dca::dca {
-    use std::option::{Option, Self, none, is_some};
+    use std::option::{Option, Self, none};
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{TxContext, sender};
     use sui::balance::{Self, Balance};
     use sui::clock::{Self, Clock};
-    use sui::dynamic_field as df;
     use sui::transfer;
     use sui::coin::{Coin, Self};
     use sui::event;
     use sui::sui::SUI;
 
-    use dca::proof::{Self, TradeProof};
     use dca::time;
     use dca::math::{mul, div};
-    use dca::protocol_list::{Self, ProtocolList};
+
+    friend dca::cetus;
+    friend dca::flow_x;
+    friend dca::turbos;
 
     // === CONSTS ===
 
@@ -44,12 +45,8 @@ module dca::dca {
     struct ProofKey has copy, store, drop {}
 
     struct TradePromise<phantom Input, phantom Output> {
-        trader: address,
         input: u64,
-        min_price: Option<u64>,
-        max_price: Option<u64>,
-        output: Option<Coin<Output>>,
-        dfs: UID,
+        min_output: u64,
     }
 
     struct DCA<phantom Input, phantom Output> has key, store {
@@ -83,6 +80,7 @@ module dca::dca {
         gas_budget: Balance<SUI>,
     }
 
+    // Price defined in terms of: X units of Input per 1 unit of Output
     struct TradeParams has store, copy, drop {
         min_price: Option<u64>,
         max_price: Option<u64>,
@@ -95,28 +93,6 @@ module dca::dca {
         owner: address,
         delegatee: address,
     }
-
-    public fun add_trade_proof<Wit: drop, Input, Output>(
-        wit: Wit,
-        promise: &mut TradePromise<Input, Output>,
-        input: u64,
-        output: u64
-    ) {
-        df::add(&mut promise.dfs, ProofKey {}, proof::create<Wit, Input, Output>(wit, input, output))
-    }
-    
-    public fun add_trade_proof_with_coin<Wit: drop, Input, Output>(
-        wit: Wit,
-        promise: &mut TradePromise<Input, Output>,
-        input: u64,
-        output: Coin<Output>,
-    ) {
-        let output_amount = coin::value(&output);
-        option::fill(&mut promise.output, output);
-
-        df::add(&mut promise.dfs, ProofKey {}, proof::create<Wit, Input, Output>(wit, input, output_amount))
-    }
-
 
     // === Constructor Functions ===
 
@@ -255,7 +231,7 @@ module dca::dca {
 
     // === Trade Functions ===
     
-    public fun init_trade<Input, Output>(
+    public(friend) fun init_trade<Input, Output>(
         dca: &mut DCA<Input, Output>,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -277,63 +253,23 @@ module dca::dca {
         let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
         transfer::public_transfer(fees, dca.delegatee);
 
+        let input = balance::value(&input_funds);
+
         let promise = TradePromise<Input, Output> {
-            trader: dca.owner,
-            input: balance::value(&input_funds),
-            min_price: dca.trade_params.min_price,
-            max_price: dca.trade_params.max_price,
-            output: none(),
-            dfs: object::new(ctx)
+            input,
+            min_output: get_min_output_amount(dca, input),
         };
         
         (coin::from_balance(input_funds, ctx), promise)
     }
     
-    public fun resolve_trade<Input, Output, Protocol: drop>(
+    public(friend) fun resolve_trade<Input, Output>(
         dca: &mut DCA<Input, Output>,
         promise: TradePromise<Input, Output>,
-        protocol_list: &ProtocolList,
         gas_cost: u64,
         ctx: &mut TxContext,
     ): Coin<SUI> {
-        // TODO: Tradepromise must have address
-        let TradePromise { trader, input, min_price, max_price, output, dfs } = promise;
-
-        // Fails if proof does not exist or is of wrong type
-        let proof: &TradeProof<Protocol, Input, Output> = df::borrow(&dfs, ProofKey {});
-
-        protocol_list::proove<Protocol>(protocol_list);
-        
-        // Checks that input amount corresponds
-        assert!(input == dca.split_allocation, 0);
-
-        // Assert that promise is from the corresponding user
-        assert!(trader == dca.owner, 0);
-
-        // Transfers output to owner if any
-        if (is_some(&output)) {
-            let out = option::extract(&mut output);
-
-            transfer::public_transfer(out, dca.owner);
-        };
-
-        option::destroy_none(output);
-
-        assert_delegatee(dca, ctx);
-        assert_active(dca);
-
-        // TODO: Numerical Precision && Overflow
-        let min_execution_price = proof::min_price<Protocol, Input, Output>(proof);
-
-        if (is_some(&min_price)) {
-            assert!(min_execution_price >= *option::borrow(&min_price), EBelowMinPrice);
-        };
-        
-        if (is_some(&max_price)) {
-            assert!(min_execution_price <= *option::borrow(&max_price), EAboveMaxPrice);
-        };
-
-        object::delete(dfs);
+        let TradePromise { input, min_output } = promise;
 
         // If no more trades to make, set DCA to inactive
         if (dca.remaining_orders == 0 || balance::value(&dca.input_balance) == 0) {
@@ -523,10 +459,8 @@ module dca::dca {
     public fun trade_params<Input, Output>(dca: &DCA<Input, Output>): TradeParams { dca.trade_params }
     public fun active<Input, Output>(dca: &DCA<Input, Output>): bool { dca.active }
 
-    public fun trade_owner<Input, Output>(promise: &TradePromise<Input, Output>): address { promise.trader }
     public fun trade_input<Input, Output>(promise: &TradePromise<Input, Output>): u64 { promise.input }
-    public fun trade_min_price<Input, Output>(promise: &TradePromise<Input, Output>): Option<u64> { promise.min_price }
-    public fun trade_max_price<Input, Output>(promise: &TradePromise<Input, Output>): Option<u64> { promise.max_price }
+    public fun trade_min_output<Input, Output>(promise: &TradePromise<Input, Output>): u64 { promise.min_output }
 
     // === Private Functions ===
 
@@ -552,6 +486,18 @@ module dca::dca {
 
     fun gas_budget_estimate(n_tx: u64): u64 {
         mul(GAS_BUDGET_PER_TRADE, n_tx)
+    }
+
+    fun get_min_output_amount<Input, Output>(dca: &DCA<Input, Output>, input_amount: u64): u64 {
+        if (option::is_none(&dca.trade_params.max_price)) {
+            // We return 1 for extra safety as no trade should return zero as output
+            1
+        } else {
+            let max_price = option::borrow(&dca.trade_params.max_price);
+
+            let min_output = div(input_amount, *max_price);
+            min_output
+        }
     }
 
     // === Assertions ===
@@ -648,17 +594,8 @@ module dca::dca {
     #[test_only]
     public fun destroy_promise_for_testing<Input, Output>(promise: TradePromise<Input, Output>) {
         let TradePromise {
-            trader: _, input: _, min_price: _, max_price: _, output, dfs
+            input: _, min_output: _,
         } = promise;
-
-        if (is_some(&output)) {
-            let out = option::extract(&mut output);
-
-            coin::burn_for_testing(out);
-        };
-        
-        option::destroy_none(output);
-        object::delete(dfs);
     }
     
     #[test_only]

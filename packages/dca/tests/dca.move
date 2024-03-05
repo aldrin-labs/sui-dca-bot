@@ -10,7 +10,6 @@ module dca::dca_tests {
 
     use dca::dca::{Self, DCA};
     use dca::time_scale;
-    use dca::protocol_list::{Self, ProtocolList, DummyDefi, dummy_defi_wit, protocol_registry_for_testing};
     use dca::time::{seconds_per_month, mean_deviation_month};
 
     // Test struct mocking USDC type

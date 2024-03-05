@@ -7,7 +7,9 @@ module turbos_clmm::swap_router {
     public entry fun swap_a_b<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
 		coins_a: vector<Coin<CoinTypeA>>, 
-		amount: u64,
+		// Exact input amount
+        amount: u64,
+        // Minimum output amount
         amount_threshold: u64,
         sqrt_price_limit: u128,
         is_exact_in: bool,

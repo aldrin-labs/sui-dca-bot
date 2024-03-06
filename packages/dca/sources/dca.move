@@ -26,7 +26,7 @@ module dca::dca {
     const ORDER_LIMIT: u64 = 25_000;
     const MINIMUM_FUNDING_PER_TRADE: u64 = 100_000;
 
-    // === Error Codes ===
+    // === Error Codes === 
     
     const EInvalidTimeScale: u64 = 1;
     const EInvalidEvery: u64 = 2;

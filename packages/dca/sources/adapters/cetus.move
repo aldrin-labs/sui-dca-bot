@@ -99,7 +99,7 @@ module dca::cetus {
         config: &GlobalConfig,
         pool_i: &mut Pool<A, B>,
         pool_ii: &mut Pool<B, C>,
-        _amount_0: u64, // TODO: remove
+        _amount_0: u64, // TODO: Consider removing to eliminate redundancy or keep to mitigate interface changes
         amount_1: u64,
         sqrt_price_limit_0: u128,
         sqrt_price_limit_1: u128,

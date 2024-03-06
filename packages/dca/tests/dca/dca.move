@@ -44,7 +44,6 @@ module dca::dca_tests {
     
     #[test]
     fun it_works_with_exact_lower_mean_months() {
-        // TODO
         let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 

@@ -16,11 +16,6 @@ module dca::dca {
     friend dca::cetus;
     friend dca::flow_x;
     friend dca::turbos;
-    
-    #[test_only]
-    friend dca::test_utils;
-    #[test_only]
-    friend dca::dca_tests_2;
 
     // === CONSTS ===
 
@@ -149,7 +144,7 @@ module dca::dca {
 
         let current_time = clock::timestamp_ms(clock);
         // At init-time we set split_allocation = outlay / total_orders
-        let split_allocation = div(balance::value(&input_funds), future_orders);
+        let split_allocation = compute_split_allocation(balance::value(&input_funds), future_orders);
 
         let dca_uid = object::new(ctx);
         let owner = sender(ctx);
@@ -253,11 +248,18 @@ module dca::dca {
         assert_time(current_time, dca.last_time_ms, dca.every, dca.time_scale);
 
         // Pop funds, update last_time_ts, and update remaining orders
-        let input_funds = balance::split(&mut dca.input_balance, dca.split_allocation);
+        let input_funds = if (dca.remaining_orders > 1) {
+            balance::split(&mut dca.input_balance, dca.split_allocation)
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            balance::withdraw_all(&mut dca.input_balance)
+        };
+
         dca.last_time_ms = clock::timestamp_ms(clock);
         dca.remaining_orders = dca.remaining_orders - 1;
 
-        // Comput and transfer fees to delegatee
+        // Compute and transfer fees to delegatee
         
         let fee_amount = fee_amount(dca.split_allocation);
         let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
@@ -485,7 +487,17 @@ module dca::dca {
     }
     
     fun recompute_split_allocation_unsafe<Input, Output>(dca: &mut DCA<Input, Output>) {
-        dca.split_allocation = div(balance::value(&dca.input_balance), dca.remaining_orders);
+        dca.split_allocation = compute_split_allocation(balance::value(&dca.input_balance), dca.remaining_orders);
+    }
+
+    fun compute_split_allocation(input_amount: u64, orders: u64): u64 {
+        // Rounds down
+        div(input_amount, orders)
+    }
+
+    fun compute_min_price(input_amount: u64, max_price: u64): u64 {
+        // Rounds down
+        div(input_amount, max_price)
     }
 
     fun set_inactive_and_reset<Input, Output>(dca: &mut DCA<Input, Output>) {
@@ -505,7 +517,7 @@ module dca::dca {
         } else {
             let max_price = option::borrow(&dca.trade_params.max_price);
 
-            let min_output = div(input_amount, *max_price);
+            let min_output = compute_min_price(input_amount, *max_price);
             min_output
         }
     }
@@ -623,12 +635,15 @@ module dca::dca {
     }
 
     public(friend) fun funds_net_of_fees(amount: u64): u64 {
-        let fee_amount = fee_amount(amount);
-
-        amount - fee_amount
+        amount - fee_amount(amount)
     }
 
     // === Test-only functions ===
+
+    #[test_only]
+    friend dca::test_utils;
+    #[test_only]
+    friend dca::dca_tests_2;
 
     #[test_only]
     public fun destroy_promise_for_testing<Input, Output>(promise: TradePromise<Input, Output>) {
@@ -668,4 +683,35 @@ module dca::dca {
     #[test_only]
     public fun minimum_funding_per_trade(): u64 { MINIMUM_FUNDING_PER_TRADE}
 
+    // === Tests ===
+
+    #[test]
+    fun test_gas_budget() {
+        assert!(gas_budget_estimate(3) == 75_000_000, 0);
+        assert!(gas_budget_estimate(33) == 825_000_000, 0);
+        assert!(gas_budget_estimate(333) == 8_325_000_000, 0);
+        assert!(gas_budget_estimate(3333) == 83_325_000_000, 0);
+        assert!(gas_budget_estimate(24333) == 608_325_000_000, 0);
+        assert!(gas_budget_estimate(25000) == 625_000_000_000, 0);
+    }
+    
+    #[test]
+    fun test_compute_min_price() {
+        assert!(compute_min_price(100000, 3) == 33333, 0);
+        assert!(compute_min_price(100000, 33) == 3030, 0);
+        assert!(compute_min_price(100000, 333) == 300, 0);
+        assert!(compute_min_price(100000, 3333) == 30, 0);
+        assert!(compute_min_price(100000, 33333) == 3, 0);
+        assert!(compute_min_price(100000, 333333) == 0, 0);
+        assert!(compute_min_price(100000, 3333333) == 0, 0);
+
+        // Rounds down
+        assert!(compute_min_price(777777, 3) == 259259, 0); // 259259
+        assert!(compute_min_price(777777, 33) == 23569, 0); // 23569
+        assert!(compute_min_price(777777, 333) == 2335, 0); // 2335.666667
+        assert!(compute_min_price(777777, 3333) == 233, 0); // 233.3564356
+        assert!(compute_min_price(777777, 33333) == 23, 0); // 23.33354334
+        assert!(compute_min_price(777777, 333333) == 2, 0); // 2.333333333
+        assert!(compute_min_price(777777, 3333333) == 0, 0); // 0.233333123
+    }
 }

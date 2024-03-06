@@ -11,7 +11,7 @@ module dca::turbos {
 
     public fun swap_a_b<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
-        amount_threshold: u64, // TODO: Minimum output amount
+        amount_threshold: u64, // Minimum output amount
         sqrt_price_limit: u128,
         is_exact_in: bool,
         deadline: u64,

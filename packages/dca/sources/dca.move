@@ -1,4 +1,5 @@
 module dca::dca {
+    // use std::debug::print;
     use std::option::{Option, Self, none};
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{TxContext, sender};
@@ -15,6 +16,8 @@ module dca::dca {
     friend dca::cetus;
     friend dca::flow_x;
     friend dca::turbos;
+    #[test_only]
+    friend dca::defi_test;
 
     // === CONSTS ===
 
@@ -39,12 +42,13 @@ module dca::dca {
     const EUnfundedAccount: u64 = 12;
     const ETotalOrdersAboveLimit: u64 = 13;
     const EBelowMinimumFunding: u64 = 14;
+    const EInsufficientGasProvision: u64 = 15;
 
     // === Structs ===
 
     struct ProofKey has copy, store, drop {}
 
-    struct TradePromise<phantom Input, phantom Output> {
+    struct TradePromise<phantom Input, phantom Output> has drop {
         input: u64,
         min_output: u64,
     }
@@ -134,7 +138,8 @@ module dca::dca {
         assert_time_scale(time_scale);
         assert_every(every, time_scale);
         assert_how_many_orders(future_orders, every, time_scale);
-        assert_minimum_funding_per_trade(future_orders, coin::value(&input_funds));
+        assert_minimum_funding_per_trade(coin::balance(&input_funds), future_orders);
+        assert_minimum_gas_funds(coin::balance(gas_funds), future_orders);
 
         let input_funds = coin::into_balance(input_funds);
 
@@ -291,7 +296,8 @@ module dca::dca {
         ctx: &mut TxContext,
     ) {
         assert_owner(dca, ctx);
-        assert_minimum_funding_per_trade(new_orders, coin::value(&input_funds));
+        assert_minimum_funding_per_trade(coin::balance(&input_funds), new_orders);
+        assert_minimum_gas_funds(coin::balance(gas_funds), new_orders);
         dca.active = true;
 
         let funds = coin::into_balance(input_funds);
@@ -319,7 +325,8 @@ module dca::dca {
     ) {
         dca.remaining_orders = dca.remaining_orders + new_orders;
 
-        assert_minimum_funding_per_trade(dca.remaining_orders, balance::value(&dca.input_balance));
+        assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
+        assert_minimum_gas_funds(&dca.input_balance, dca.remaining_orders);
 
         let gas_budget = coin::into_balance(
             coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)
@@ -364,7 +371,7 @@ module dca::dca {
         
         // Recompute split_allocation
         recompute_split_allocation(dca);
-        assert_minimum_funding_per_trade(dca.remaining_orders, balance::value(&dca.input_balance));
+        assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
 
         // Return funds
         (funds, gas_budget)
@@ -530,11 +537,11 @@ module dca::dca {
             } else if (time_scale == 3) { // 3 => days
                 // Lower bound --> 1 day
                 // Upper bound --> 6 days
-                every >= 1 && every <= 6
+                every >= 1 && every <= 30
             } else if (time_scale == 4) { // 4 => weeks
                 // Lower bound --> 1 week
                 // Upper bound --> 4 weeks
-                every >= 1 && every <= 4
+                every >= 1 && every <= 52
             } else if (time_scale == 5) { // 5 => months
                 // Lower bound --> 1 month
                 // Upper bound --> 12 months
@@ -551,8 +558,14 @@ module dca::dca {
         assert!(how_many_orders <= ORDER_LIMIT, ETotalOrdersAboveLimit);
     }
     
-    fun assert_minimum_funding_per_trade(funding_amount: u64, n_tx: u64) {
+    fun assert_minimum_funding_per_trade<T>(total_funding: &Balance<T>, n_tx: u64) {
+        let funding_amount = balance::value(total_funding);
         assert!(funding_amount >= mul(n_tx, MINIMUM_FUNDING_PER_TRADE), EBelowMinimumFunding);
+    }
+    
+    fun assert_minimum_gas_funds<T>(gas_funds: &Balance<T>, n_tx: u64) {
+        let gas_amount = balance::value(gas_funds);
+        assert!(gas_amount >= gas_budget_estimate(n_tx), EInsufficientGasProvision);
     }
     
     fun assert_owner<Input, Output>(dca: &DCA<Input, Output>, ctx: &TxContext) {
@@ -619,5 +632,10 @@ module dca::dca {
         object::delete(id);
         balance::destroy_for_testing(input_balance);
         balance::destroy_for_testing(gas_budget);
+    }
+
+    #[test_only]
+    public fun gas_budget_estimate_(n_tx: u64): u64 {
+        gas_budget_estimate(n_tx)
     }
 }

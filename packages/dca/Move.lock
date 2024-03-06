@@ -2,7 +2,7 @@
 
 [move]
 version = 0
-manifest_digest = "D46013DE0DAC772B690E0C11109DCD4324CB0FD6C52A568D04E7FEBDF8C4EDC4"
+manifest_digest = "325F890EC8532545717F5C1ACB4A7916A8DA192D14DB9269F2F5A82C9A3165CF"
 deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
 
 dependencies = [
@@ -74,3 +74,8 @@ source = { local = "../interfaces/turbos" }
 dependencies = [
   { name = "Sui" },
 ]
+
+[move.toolchain-version]
+compiler-version = "1.19.1"
+edition = "legacy"
+flavor = "sui"

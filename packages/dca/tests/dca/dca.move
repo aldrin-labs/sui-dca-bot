@@ -16,21 +16,20 @@ module dca::dca_tests {
         let (dca, clock) = init_dca_and_clock(default_funding_amount(), 1704067200, ctx);
 
         test_scenario::next_tx(&mut scenario, delegatee());
-        let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
-        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, 1709251200, &mut dca, &mut clock, ctx); // Fri Mar 01 2024 00:00:00 GMT+0000s
-        init_trade_and_check(500, 1711926000, &mut dca, &mut clock, ctx); // Mon Apr 01 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, 1714518000, &mut dca, &mut clock, ctx); // Wed May 01 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, 1717196400, &mut dca, &mut clock, ctx); // Fri May 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, 1719788400, &mut dca, &mut clock, ctx); // Sun Jun 30 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, 1722466800, &mut dca, &mut clock, ctx); // Wed Jul 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, 1725145200, &mut dca, &mut clock, ctx); // Sat Aug 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, 1727737200, &mut dca, &mut clock, ctx); // Mon Sep 30 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, 1730419200, &mut dca, &mut clock, ctx); // Fri Nov 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, 1733011200, &mut dca, &mut clock, ctx); // Sun Dec 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, 1735689600, &mut dca, &mut clock, ctx); // Wed Jan 01 2025 00:00:00 GMT+0000
+        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, &mut scenario); // Thu Feb 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, 1709251200, &mut dca, &mut clock, &mut scenario); // Fri Mar 01 2024 00:00:00 GMT+0000s
+        init_trade_and_check(500, 1711926000, &mut dca, &mut clock, &mut scenario); // Mon Apr 01 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, 1714518000, &mut dca, &mut clock, &mut scenario); // Wed May 01 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, 1717196400, &mut dca, &mut clock, &mut scenario); // Fri May 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, 1719788400, &mut dca, &mut clock, &mut scenario); // Sun Jun 30 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, 1722466800, &mut dca, &mut clock, &mut scenario); // Wed Jul 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, 1725145200, &mut dca, &mut clock, &mut scenario); // Sat Aug 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, 1727737200, &mut dca, &mut clock, &mut scenario); // Mon Sep 30 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, 1730419200, &mut dca, &mut clock, &mut scenario); // Fri Nov 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, 1733011200, &mut dca, &mut clock, &mut scenario); // Sun Dec 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, 1735689600, &mut dca, &mut clock, &mut scenario); // Wed Jan 01 2025 00:00:00 GMT+0000
         
         // Close DCA account
         test_scenario::next_tx(&mut scenario, owner());
@@ -54,21 +53,20 @@ module dca::dca_tests {
         let (dca, clock) = init_dca_and_clock(default_funding_amount(), start_time, ctx);
 
         test_scenario::next_tx(&mut scenario, delegatee());
-        let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
-        init_trade_and_check(500, start_time + seconds_per_month() * 1, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 2, &mut dca, &mut clock, ctx); // Fri Mar 01 2024 00:00:00 GMT+0000s
-        init_trade_and_check(500, start_time + seconds_per_month() * 3, &mut dca, &mut clock, ctx); // Mon Apr 01 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 4, &mut dca, &mut clock, ctx); // Wed May 01 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 5, &mut dca, &mut clock, ctx); // Fri May 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 6, &mut dca, &mut clock, ctx); // Sun Jun 30 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 7, &mut dca, &mut clock, ctx); // Wed Jul 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 8, &mut dca, &mut clock, ctx); // Sat Aug 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 9, &mut dca, &mut clock, ctx); // Mon Sep 30 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 10, &mut dca, &mut clock, ctx); // Fri Nov 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 11, &mut dca, &mut clock, ctx); // Sun Dec 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 12, &mut dca, &mut clock, ctx); // Wed Jan 01 2025 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 1, &mut dca, &mut clock, &mut scenario); // Thu Feb 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 2, &mut dca, &mut clock, &mut scenario); // Fri Mar 01 2024 00:00:00 GMT+0000s
+        init_trade_and_check(500, start_time + seconds_per_month() * 3, &mut dca, &mut clock, &mut scenario); // Mon Apr 01 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 4, &mut dca, &mut clock, &mut scenario); // Wed May 01 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 5, &mut dca, &mut clock, &mut scenario); // Fri May 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 6, &mut dca, &mut clock, &mut scenario); // Sun Jun 30 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 7, &mut dca, &mut clock, &mut scenario); // Wed Jul 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 8, &mut dca, &mut clock, &mut scenario); // Sat Aug 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 9, &mut dca, &mut clock, &mut scenario); // Mon Sep 30 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 10, &mut dca, &mut clock, &mut scenario); // Fri Nov 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 11, &mut dca, &mut clock, &mut scenario); // Sun Dec 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 12, &mut dca, &mut clock, &mut scenario); // Wed Jan 01 2025 00:00:00 GMT+0000
         
         // Close DCA account
         test_scenario::next_tx(&mut scenario, owner());
@@ -91,21 +89,20 @@ module dca::dca_tests {
         let (dca, clock) = init_dca_and_clock(default_funding_amount(), start_time, ctx);
 
         test_scenario::next_tx(&mut scenario, delegatee());
-        let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
-        init_trade_and_check(500, start_time + seconds_per_month() * 1 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 2 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Fri Mar 01 2024 00:00:00 GMT+0000s
-        init_trade_and_check(500, start_time + seconds_per_month() * 3 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Mon Apr 01 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 4 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Wed May 01 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 5 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Fri May 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 6 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Sun Jun 30 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 7 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Wed Jul 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 8 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Sat Aug 31 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 9 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Mon Sep 30 2024 23:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 10 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Fri Nov 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 11 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Sun Dec 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, start_time + seconds_per_month() * 12 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Wed Jan 01 2025 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 1 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Thu Feb 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 2 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Fri Mar 01 2024 00:00:00 GMT+0000s
+        init_trade_and_check(500, start_time + seconds_per_month() * 3 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Mon Apr 01 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 4 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Wed May 01 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 5 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Fri May 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 6 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Sun Jun 30 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 7 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Wed Jul 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 8 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Sat Aug 31 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 9 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Mon Sep 30 2024 23:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 10 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Fri Nov 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 11 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Sun Dec 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 12 - mean_deviation_month(), &mut dca, &mut clock, &mut scenario); // Wed Jan 01 2025 00:00:00 GMT+0000
         
         // Close DCA account
         test_scenario::next_tx(&mut scenario, owner());
@@ -129,10 +126,9 @@ module dca::dca_tests {
         let (dca, clock) = init_dca_and_clock(default_funding_amount(), start_time, ctx);
 
         test_scenario::next_tx(&mut scenario, delegatee());
-        let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
-        init_trade_and_check(500, start_time + seconds_per_month() * 1 - mean_deviation_month() - 1, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, start_time + seconds_per_month() * 1 - mean_deviation_month() - 1, &mut dca, &mut clock, &mut scenario); // Thu Feb 01 2024 00:00:00 GMT+0000
         
         // Close DCA account
         test_scenario::next_tx(&mut scenario, owner());

@@ -40,11 +40,10 @@ module dca::dca_tests_2 {
         coin::burn_for_testing(gas_funds);
 
         test_scenario::next_tx(&mut scenario, delegatee());
-        let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
-        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
-        init_trade_and_check(500, 1709251200, &mut dca, &mut clock, ctx); // Fri Mar 01 2024 00:00:00 GMT+0000s
+        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, &mut scenario); // Thu Feb 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, 1709251200, &mut dca, &mut clock, &mut scenario); // Fri Mar 01 2024 00:00:00 GMT+0000s
         
         // Close DCA account
         test_scenario::next_tx(&mut scenario, owner());
@@ -84,10 +83,9 @@ module dca::dca_tests_2 {
         coin::burn_for_testing(gas_funds);
 
         test_scenario::next_tx(&mut scenario, delegatee());
-        let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
-        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, &mut scenario); // Thu Feb 01 2024 00:00:00 GMT+0000
 
         test_scenario::next_tx(&mut scenario, owner());
         let ctx = ctx(&mut scenario);

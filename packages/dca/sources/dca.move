@@ -258,7 +258,8 @@ module dca::dca {
         dca.remaining_orders = dca.remaining_orders - 1;
 
         // Comput and transfer fees to delegatee
-        let fee_amount = div(mul(dca.split_allocation, BASE_FEES_BPS), 10_000);
+        
+        let fee_amount = fee_amount(dca.split_allocation);
         let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
         transfer::public_transfer(fees, dca.delegatee);
 
@@ -617,8 +618,12 @@ module dca::dca {
         );
     }
 
+    public(friend) fun fee_amount(amount: u64): u64 {
+        div(mul(amount, BASE_FEES_BPS), 10_000)
+    }
+
     public(friend) fun funds_net_of_fees(amount: u64): u64 {
-        let fee_amount = div(mul(amount, BASE_FEES_BPS), 10_000);
+        let fee_amount = fee_amount(amount);
 
         amount - fee_amount
     }

@@ -107,10 +107,9 @@ module dca::dca_access_tests {
         let (dca, clock) = init_dca_and_clock(default_funding_amount(), 1704067200, ctx);
 
         test_scenario::next_tx(&mut scenario, fake_delegatee());
-        let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
-        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
+        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, &mut scenario); // Thu Feb 01 2024 00:00:00 GMT+0000
         
         // Close DCA account
         test_scenario::next_tx(&mut scenario, owner());

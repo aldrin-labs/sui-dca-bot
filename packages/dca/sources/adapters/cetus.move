@@ -9,8 +9,6 @@ module dca::cetus {
     use sui::tx_context::{TxContext, sender};
     use dca::dca::{Self, DCA, init_trade, resolve_trade};
 
-    const EMinOutputBelowThreshold: u64 = 1;
-
     public fun swap_ab<A, B>(
         config: &GlobalConfig,
         pool: &mut Pool<A, B>,
@@ -45,11 +43,7 @@ module dca::cetus {
             ctx
         );
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin_b) >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(coin::value(&coin_b), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_b, dca::owner(dca));
@@ -92,11 +86,7 @@ module dca::cetus {
             ctx
         );
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin_a) >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(coin::value(&coin_a), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_b, dca::owner(dca));
@@ -140,11 +130,7 @@ module dca::cetus {
             ctx
         );
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin_c) >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));
@@ -188,11 +174,7 @@ module dca::cetus {
             ctx
         );
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin_c) >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));
@@ -236,11 +218,7 @@ module dca::cetus {
             ctx
         );
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin_c) >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));
@@ -284,11 +262,7 @@ module dca::cetus {
             ctx
         );
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin_c) >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));

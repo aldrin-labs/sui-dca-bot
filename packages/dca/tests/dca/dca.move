@@ -1,38 +1,21 @@
 #[test_only]
 module dca::dca_tests {
     // use std::debug::print;
-    use sui::tx_context::TxContext;
-    use sui::balance::{Self};
-    use sui::clock::{Self, Clock};
-    use sui::sui::SUI;
-    use sui::coin;
+    use sui::clock;
     use sui::test_scenario::{Self, ctx};
 
-    use dca::dca::{Self, DCA, gas_budget_estimate_};
-    use dca::time_scale;
+    use dca::dca;
     use dca::time::{seconds_per_month, mean_deviation_month};
-    use dca::defi_test::{swap_ab, init_trade_and_check}; 
-
-    // Test struct mocking USDC type
-    struct USDC has drop {}
-
-    const OWNER: address = @0x1;
-    const DELEGATEE: address = @0x2;
-
-    const FAKE_OWNER: address = @0x3;
-    const FAKE_DELEGATEE: address = @0x4;
-    
-    const GAS_BUDGET_PER_TRADE: u64 = 1;
-    const FUNDING_AMOUNT: u64 = 1_200_000;
+    use dca::test_utils::{init_trade_and_check, owner, delegatee, default_funding_amount, init_dca_and_clock};
 
     #[test]
     fun it_works_base_case_months() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, 1704067200, ctx);
+        let (dca, clock) = init_dca_and_clock(default_funding_amount(), 1704067200, ctx);
 
-        test_scenario::next_tx(&mut scenario, DELEGATEE);
+        test_scenario::next_tx(&mut scenario, delegatee());
         let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
@@ -50,7 +33,7 @@ module dca::dca_tests {
         init_trade_and_check(500, 1735689600, &mut dca, &mut clock, ctx); // Wed Jan 01 2025 00:00:00 GMT+0000
         
         // Close DCA account
-        test_scenario::next_tx(&mut scenario, OWNER);
+        test_scenario::next_tx(&mut scenario, owner());
         let ctx = ctx(&mut scenario);
 
         dca::redeem_funds_and_close(dca, ctx);
@@ -63,14 +46,14 @@ module dca::dca_tests {
     #[test]
     fun it_works_with_exact_lower_mean_months() {
         // TODO
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let start_time = 1704067200;
 
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, start_time, ctx);
+        let (dca, clock) = init_dca_and_clock(default_funding_amount(), start_time, ctx);
 
-        test_scenario::next_tx(&mut scenario, DELEGATEE);
+        test_scenario::next_tx(&mut scenario, delegatee());
         let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
@@ -88,7 +71,7 @@ module dca::dca_tests {
         init_trade_and_check(500, start_time + seconds_per_month() * 12, &mut dca, &mut clock, ctx); // Wed Jan 01 2025 00:00:00 GMT+0000
         
         // Close DCA account
-        test_scenario::next_tx(&mut scenario, OWNER);
+        test_scenario::next_tx(&mut scenario, owner());
         let ctx = ctx(&mut scenario);
 
         dca::redeem_funds_and_close(dca, ctx);
@@ -100,15 +83,14 @@ module dca::dca_tests {
     
     #[test]
     fun it_works_under_lower_bound_and_lower_mean_months() {
-        // TODO
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let start_time = 1704067200;
 
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, start_time, ctx);
+        let (dca, clock) = init_dca_and_clock(default_funding_amount(), start_time, ctx);
 
-        test_scenario::next_tx(&mut scenario, DELEGATEE);
+        test_scenario::next_tx(&mut scenario, delegatee());
         let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
@@ -126,7 +108,7 @@ module dca::dca_tests {
         init_trade_and_check(500, start_time + seconds_per_month() * 12 - mean_deviation_month(), &mut dca, &mut clock, ctx); // Wed Jan 01 2025 00:00:00 GMT+0000
         
         // Close DCA account
-        test_scenario::next_tx(&mut scenario, OWNER);
+        test_scenario::next_tx(&mut scenario, owner());
         let ctx = ctx(&mut scenario);
 
         dca::redeem_funds_and_close(dca, ctx);
@@ -139,21 +121,21 @@ module dca::dca_tests {
     #[test]
     #[expected_failure(abort_code = dca::dca::ENotEnoughTimePassed)]
     fun it_fails_below_lower_bound_and_lower_mean_months() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let start_time = 1704067200;
 
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, start_time, ctx);
+        let (dca, clock) = init_dca_and_clock(default_funding_amount(), start_time, ctx);
 
-        test_scenario::next_tx(&mut scenario, DELEGATEE);
+        test_scenario::next_tx(&mut scenario, delegatee());
         let ctx = ctx(&mut scenario);
 
         // Periodic Withdrawal process
         init_trade_and_check(500, start_time + seconds_per_month() * 1 - mean_deviation_month() - 1, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
         
         // Close DCA account
-        test_scenario::next_tx(&mut scenario, OWNER);
+        test_scenario::next_tx(&mut scenario, owner());
         let ctx = ctx(&mut scenario);
 
         dca::redeem_funds_and_close(dca, ctx);
@@ -163,75 +145,21 @@ module dca::dca_tests {
         test_scenario::end(scenario);
     }
 
-    #[test_only]
-    fun init_dca_and_clock(
-        outlay: u64,
-        clock_ts: u64,
-        ctx: &mut TxContext,
-    ): (DCA<USDC, SUI>, Clock) {
-        let clock = clock::create_for_testing(ctx);
-        clock::set_for_testing(&mut clock, clock_ts); // Mon Jan 01 2024 00:00:00 GMT+0000
-
-        let outlay = coin::mint_for_testing<USDC>(outlay, ctx);
-        let gas_funds = coin::mint_for_testing<SUI>(gas_budget_estimate_(12), ctx);
-
-        // Initiate account
-        let dca = dca::new<USDC, SUI>(
-            &clock,
-            DELEGATEE,
-            outlay,
-            1, // every 1 month
-            12, // for 12 months
-            time_scale::month(),
-            &mut gas_funds,
-            ctx,
-        );
-
-        coin::burn_for_testing(gas_funds);
-
-        (dca, clock)
-    }
-
-    #[test]
-    #[expected_failure(abort_code = dca::dca::EInvalidDelegatee)]
-    fun fail_access_as_fake_delegatee() {
-        let scenario = test_scenario::begin(OWNER);
-        let ctx = ctx(&mut scenario);
-
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, 1704067200, ctx);
-
-        test_scenario::next_tx(&mut scenario, FAKE_DELEGATEE);
-        let ctx = ctx(&mut scenario);
-
-        // Periodic Withdrawal process
-        init_trade_and_check(500, 1706745600, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
-        
-        // Close DCA account
-        test_scenario::next_tx(&mut scenario, OWNER);
-        let ctx = ctx(&mut scenario);
-
-        dca::redeem_funds_and_close(dca, ctx);
-
-        // Finish testing
-        clock::destroy_for_testing(clock);
-        test_scenario::end(scenario);
-    }
-    
     // #[test]
     // fun early_account_close_as_owner() {
-    //     let scenario = test_scenario::begin(OWNER);
+    //     let scenario = test_scenario::begin(owner());
     //     let ctx = ctx(&mut scenario);
 
-    //     let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, 1704067200, ctx);
+    //     let (dca, clock) = init_dca_and_clock(default_funding_amount(), 1704067200, ctx);
 
-    //     test_scenario::next_tx(&mut scenario, FAKE_OWNER);
+    //     test_scenario::next_tx(&mut scenario, FAKE_owner());
     //     let ctx = ctx(&mut scenario);
 
     //     // Periodic Withdrawal process
     //     init_trade_and_check(500, 1706745600, &mut dca, &mut clock, ctx); // Thu Feb 01 2024 00:00:00 GMT+0000
         
     //     // Close DCA account
-    //     test_scenario::next_tx(&mut scenario, OWNER);
+    //     test_scenario::next_tx(&mut scenario, owner());
     //     let ctx = ctx(&mut scenario);
 
     //     dca::redeem_funds_and_close(dca, ctx);
@@ -240,62 +168,4 @@ module dca::dca_tests {
     //     clock::destroy_for_testing(clock);
     //     test_scenario::end(scenario);
     // }
-
-    #[test]
-    #[expected_failure(abort_code = dca::dca::EInvalidAuthority)]
-    fun fail_close_account_as_fake_owner() {
-        let scenario = test_scenario::begin(OWNER);
-        let ctx = ctx(&mut scenario);
-
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, 1704067200, ctx);
-
-        test_scenario::next_tx(&mut scenario, FAKE_OWNER);
-        let ctx = ctx(&mut scenario);
-
-        dca::redeem_funds_and_close(dca, ctx);
-
-        // Finish testing
-        clock::destroy_for_testing(clock);
-        test_scenario::end(scenario);
-    }
-    
-    #[test]
-    #[expected_failure(abort_code = dca::dca::EInvalidOwner)]
-    fun fail_withdraw_base_as_fake_owner() {
-        let scenario = test_scenario::begin(OWNER);
-        let ctx = ctx(&mut scenario);
-
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, 1704067200, ctx);
-
-        test_scenario::next_tx(&mut scenario, FAKE_OWNER);
-        let ctx = ctx(&mut scenario);
-
-        dca::withdraw_input(&mut dca, FUNDING_AMOUNT, 12, ctx);
-        dca::destroy_for_testing(dca);
-
-        // Finish testing
-        clock::destroy_for_testing(clock);
-        test_scenario::end(scenario);
-    }
-    
-    #[test]
-    #[expected_failure(abort_code = dca::dca::EInvalidOwner)]
-    fun fail_withdraw_base_as_fake_owner_1() {
-        let scenario = test_scenario::begin(OWNER);
-        let ctx = ctx(&mut scenario);
-
-        let (dca, clock) = init_dca_and_clock(FUNDING_AMOUNT, 1704067200, ctx);
-
-        test_scenario::next_tx(&mut scenario, FAKE_OWNER);
-        let ctx = ctx(&mut scenario);
-
-        let (funds, gas_budget) = dca::withdraw_input_(&mut dca, FUNDING_AMOUNT, 12, ctx);
-        dca::destroy_for_testing(dca);
-
-        // Finish testing
-        balance::destroy_for_testing(funds);
-        balance::destroy_for_testing(gas_budget);
-        clock::destroy_for_testing(clock);
-        test_scenario::end(scenario);
-    }
 }

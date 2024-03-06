@@ -9,8 +9,6 @@ module dca::turbos {
     use sui::transfer;
     use dca::dca::{Self, DCA, init_trade, resolve_trade};
 
-    const EMinOutputBelowThreshold: u64 = 1;
-
     public fun swap_a_b<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
         amount_threshold: u64, // TODO: Minimum output amount
@@ -26,11 +24,7 @@ module dca::turbos {
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = coin::value(&funds);
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            amount_threshold >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(amount_threshold, &promise);
 
         swap_router::swap_a_b(
             pool,
@@ -66,11 +60,7 @@ module dca::turbos {
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = coin::value(&funds);
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            amount_threshold >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(amount_threshold, &promise);
 
         swap_router::swap_b_a(
             pool,
@@ -107,11 +97,7 @@ module dca::turbos {
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = coin::value(&funds);
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            amount_threshold >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(amount_threshold, &promise);
 
         swap_router::swap_a_b_b_c(
             pool_a,
@@ -150,11 +136,7 @@ module dca::turbos {
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = coin::value(&funds);
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            amount_threshold >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(amount_threshold, &promise);
 
         swap_router::swap_a_b_c_b(
             pool_a,
@@ -193,11 +175,7 @@ module dca::turbos {
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = coin::value(&funds);
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            amount_threshold >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(amount_threshold, &promise);
 
         swap_router::swap_b_a_b_c(
             pool_a,
@@ -236,11 +214,7 @@ module dca::turbos {
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = coin::value(&funds);
 
-        let min_output = dca::trade_min_output(&promise);
-        assert!(
-            amount_threshold >= min_output,
-            EMinOutputBelowThreshold
-        );
+        dca::assert_min_price(amount_threshold, &promise);
 
         swap_router::swap_b_a_c_b(
             pool_a,

@@ -7,22 +7,14 @@ module dca::dca_tests_every_pass {
 
     use dca::dca::{Self, gas_budget_estimate_};
     use dca::time_scale;
+    use dca::test_utils::{
+        owner, delegatee, default_funding_amount, USDC
+    };
 
-    // Test struct mocking USDC type
-    struct USDC has drop {}
 
-    const OWNER: address = @0x1;
-    const DELEGATEE: address = @0x2;
-
-    const FAKE_OWNER: address = @0x3;
-    const FAKE_DELEGATEE: address = @0x4;
-    
-    const GAS_BUDGET_PER_TRADE: u64 = 1;
-    const FUNDING_AMOUNT: u64 = 1_200_000;
-    
     #[test]
     fun it_fails_invalid_every_seconds_lower() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -33,8 +25,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             30,
             12,
             time_scale::second(),
@@ -52,7 +44,7 @@ module dca::dca_tests_every_pass {
     
     #[test]
     fun it_fails_invalid_every_seconds_upper() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -63,8 +55,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             59,
             12,
             time_scale::second(),
@@ -82,7 +74,7 @@ module dca::dca_tests_every_pass {
     
     #[test]
     fun it_fails_invalid_every_minutes_lower() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -93,8 +85,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             1,
             12,
             time_scale::minute(),
@@ -112,7 +104,7 @@ module dca::dca_tests_every_pass {
 
     #[test]
     fun it_fails_invalid_every_minutes_upper() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -123,8 +115,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             59,
             12,
             time_scale::second(),
@@ -142,7 +134,7 @@ module dca::dca_tests_every_pass {
 
     #[test]
     fun it_fails_invalid_every_hours_lower() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -153,8 +145,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             1,
             12,
             time_scale::hour(),
@@ -172,7 +164,7 @@ module dca::dca_tests_every_pass {
 
     #[test]
     fun it_fails_invalid_every_hours_upper() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -183,8 +175,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             24,
             12,
             time_scale::hour(),
@@ -202,7 +194,7 @@ module dca::dca_tests_every_pass {
     
     #[test]
     fun it_fails_invalid_every_days_lower() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -213,8 +205,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             1,
             12,
             time_scale::day(),
@@ -232,7 +224,7 @@ module dca::dca_tests_every_pass {
 
     #[test]
     fun it_fails_invalid_every_days_upper() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -243,8 +235,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             30,
             12,
             time_scale::day(),
@@ -262,7 +254,7 @@ module dca::dca_tests_every_pass {
     
     #[test]
     fun it_fails_invalid_every_weeks_lower() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -273,8 +265,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             1,
             12,
             time_scale::week(),
@@ -292,7 +284,7 @@ module dca::dca_tests_every_pass {
 
     #[test]
     fun it_fails_invalid_every_weeks_upper() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -303,8 +295,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             52,
             12,
             time_scale::week(),
@@ -322,7 +314,7 @@ module dca::dca_tests_every_pass {
     
     #[test]
     fun it_fails_invalid_every_months_lower() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -333,8 +325,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             1,
             12,
             time_scale::month(),
@@ -352,7 +344,7 @@ module dca::dca_tests_every_pass {
     
     #[test]
     fun it_fails_invalid_every_months_upper() {
-        let scenario = test_scenario::begin(OWNER);
+        let scenario = test_scenario::begin(owner());
         let ctx = ctx(&mut scenario);
 
         let clock = clock::create_for_testing(ctx);
@@ -363,8 +355,8 @@ module dca::dca_tests_every_pass {
         // Initiate account
         let dca = dca::new<USDC, SUI>(
             &clock,
-            DELEGATEE,
-            coin::mint_for_testing<USDC>(FUNDING_AMOUNT, ctx),
+            delegatee(),
+            coin::mint_for_testing<USDC>(default_funding_amount(), ctx),
             12,
             12,
             time_scale::month(),

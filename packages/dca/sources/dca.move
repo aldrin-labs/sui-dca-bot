@@ -16,8 +16,11 @@ module dca::dca {
     friend dca::cetus;
     friend dca::flow_x;
     friend dca::turbos;
+    
     #[test_only]
-    friend dca::defi_test;
+    friend dca::test_utils;
+    #[test_only]
+    friend dca::dca_tests_2;
 
     // === CONSTS ===
 
@@ -35,11 +38,12 @@ module dca::dca {
     const EInvalidAuthority: u64 = 5;
     const EInsufficientInputBalance: u64 = 6;
     const ENotEnoughTimePassed: u64 = 7;
-    const ENoRemainingOrders: u64 = 8;
-    const EBelowMinPrice: u64 = 9;
-    const EAboveMaxPrice: u64 = 10;
-    const EInactive: u64 = 11;
-    const EUnfundedAccount: u64 = 12;
+    const EUnfundedAccount: u64 = 8;
+    const ENoRemainingOrders: u64 = 9;
+    #[allow(unused_const)]
+    const EBelowMinPrice: u64 = 10;
+    const EAboveMaxPrice: u64 = 11;
+    const EInactive: u64 = 12;
     const ETotalOrdersAboveLimit: u64 = 13;
     const EBelowMinimumFunding: u64 = 14;
     const EInsufficientGasProvision: u64 = 15;
@@ -274,11 +278,11 @@ module dca::dca {
         gas_cost: u64,
         ctx: &mut TxContext,
     ): Coin<SUI> {
-        let TradePromise { input, min_output } = promise;
+        let TradePromise { input: _, min_output: _ } = promise;
 
         // If no more trades to make, set DCA to inactive
         if (dca.remaining_orders == 0 || balance::value(&dca.input_balance) == 0) {
-            set_inactive(dca);
+            set_inactive_and_reset(dca);
         };
         
         coin::from_balance(
@@ -392,10 +396,12 @@ module dca::dca {
         dca: DCA<Input, Output>,
         ctx: &mut TxContext,
     ) {
+        assert_owner_or_delegatee(&dca, ctx);
+
         let DCA {
             id,
             owner,
-            delegatee,
+            delegatee: _,
             start_time_ms: _,
             last_time_ms: _,
             every: _,
@@ -407,10 +413,6 @@ module dca::dca {
             active: _,
             gas_budget,
         } = dca;
-
-        let sender = sender(ctx);
-
-        assert!((sender == owner) || (sender == delegatee), EInvalidAuthority);
 
         if (balance::value(&input_balance) > 0) {
             let input_funds = coin::from_balance(input_balance, ctx);
@@ -429,11 +431,11 @@ module dca::dca {
 
     // === Activity Setters ===
 
-    public entry fun set_inactive_as_delegatee<Input, Output>(
+    public entry fun set_inactive<Input, Output>(
         dca: &mut DCA<Input, Output>,
         ctx: &TxContext,
     ) {
-        assert_delegatee(dca, ctx);
+        assert_owner_or_delegatee(dca, ctx);
 
         dca.active = false;
     }
@@ -475,7 +477,7 @@ module dca::dca {
         let funds = balance::value(&dca.input_balance);
 
         if (dca.remaining_orders == 0 || funds == 0) {
-            set_inactive(dca)
+            set_inactive_and_reset(dca)
         } else {
             recompute_split_allocation_unsafe(dca);
         }
@@ -485,7 +487,7 @@ module dca::dca {
         dca.split_allocation = div(balance::value(&dca.input_balance), dca.remaining_orders);
     }
 
-    fun set_inactive<Input, Output>(dca: &mut DCA<Input, Output>) {
+    fun set_inactive_and_reset<Input, Output>(dca: &mut DCA<Input, Output>) {
         dca.split_allocation = 0;
         dca.remaining_orders = 0;
         dca.active = false;
@@ -576,6 +578,11 @@ module dca::dca {
         assert!(dca.delegatee == sender(ctx), EInvalidDelegatee);
     }
     
+    fun assert_owner_or_delegatee<Input, Output>(dca: &DCA<Input, Output>, ctx: &TxContext) {
+        let sender = sender(ctx);
+        assert!((sender == dca.owner) || (sender == dca.delegatee), EInvalidAuthority);
+    }
+    
     fun assert_input_balance<T>(balance: &Balance<T>, withdraw_amount: u64) {
         assert!(balance::value(balance) >= withdraw_amount, EInsufficientInputBalance);
     }
@@ -600,6 +607,20 @@ module dca::dca {
         };
 
         assert!(has_time_passed == true, ENotEnoughTimePassed);
+    }
+
+    public(friend) fun assert_min_price<Input, Output>(amount: u64, promise: &TradePromise<Input, Output>) {
+        let min_output = trade_min_output(promise);
+        assert!(
+            amount >= min_output,
+            EAboveMaxPrice
+        );
+    }
+
+    public(friend) fun funds_net_of_fees(amount: u64): u64 {
+        let fee_amount = div(mul(amount, BASE_FEES_BPS), 10_000);
+
+        amount - fee_amount
     }
 
     // === Test-only functions ===
@@ -638,4 +659,8 @@ module dca::dca {
     public fun gas_budget_estimate_(n_tx: u64): u64 {
         gas_budget_estimate(n_tx)
     }
+    
+    #[test_only]
+    public fun minimum_funding_per_trade(): u64 { MINIMUM_FUNDING_PER_TRADE}
+
 }

@@ -8,8 +8,6 @@ module dca::flow_x {
 	use sui::coin;
 	use sui::tx_context::{TxContext, sender};
 	use dca::dca::{Self, DCA, init_trade, resolve_trade};
-
-	const EMinOutputBelowThreshold: u64 = 1;
 	
 	public fun swap_exact_x_to_y_direct<X, Y>(
 		pool: &mut PairMetadata<X, Y>,
@@ -19,15 +17,10 @@ module dca::flow_x {
 		ctx: &mut TxContext
 	) {
 		let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = coin::value(&funds);
 
 		let coin = router::swap_exact_x_to_y_direct(pool, funds, ctx);
 
-		let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin) >= min_output,
-            EMinOutputBelowThreshold
-        );
+		dca::assert_min_price(coin::value(&coin), &promise);
 
 		transfer::public_transfer(coin, dca::owner(dca));
 
@@ -43,15 +36,10 @@ module dca::flow_x {
 		ctx: &mut TxContext
 	) {
 		let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = coin::value(&funds);
 
 		let coin = router::swap_exact_y_to_x_direct(pool, funds, ctx);
 
-		let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin) >= min_output,
-            EMinOutputBelowThreshold
-        );
+		dca::assert_min_price(coin::value(&coin), &promise);
 
 		transfer::public_transfer(coin, dca::owner(dca));
 
@@ -67,15 +55,10 @@ module dca::flow_x {
 		ctx: &mut TxContext
 	) {
 		let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = coin::value(&funds);
 
 		let coin = router::swap_exact_input_direct<INPUT, OUTPUT>(pools, funds, ctx);
 
-		let min_output = dca::trade_min_output(&promise);
-        assert!(
-            coin::value(&coin) >= min_output,
-            EMinOutputBelowThreshold
-        );
+		dca::assert_min_price(coin::value(&coin), &promise);
 
 		transfer::public_transfer(coin, dca::owner(dca));
 

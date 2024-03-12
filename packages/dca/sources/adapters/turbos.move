@@ -18,7 +18,8 @@ module dca::turbos {
         _amount: u64, // todo assert
         amount_threshold: u64, // Minimum output amount
         sqrt_price_limit: u128,
-        is_exact_in: bool,
+        _is_exact_in: bool,
+        _receiver: address, 
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -26,12 +27,14 @@ module dca::turbos {
         gas_cost: u64,
 		ctx: &mut TxContext
     ) {
+        let is_exact_in = true;
+
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = balance::value(&funds);
 
         vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
 
-        dca::assert_min_price(amount_threshold, &promise);
+        dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_a_b(
             pool,
@@ -58,6 +61,8 @@ module dca::turbos {
         _amount: u64, // todo assert
         amount_threshold: u64,
         sqrt_price_limit: u128,
+        _is_exact_in: bool,
+        _receiver: address, 
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -72,7 +77,7 @@ module dca::turbos {
 
         vector::push_back(&mut coins_b, coin::from_balance(funds, ctx));
 
-        dca::assert_min_price(amount_threshold, &promise);
+        dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_b_a(
             pool,
@@ -101,6 +106,8 @@ module dca::turbos {
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
+        _is_exact_in: bool,
+        _receiver: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -114,7 +121,7 @@ module dca::turbos {
 
         vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
 
-        dca::assert_min_price(amount_threshold, &promise);
+        dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_a_b_b_c(
             pool_a,
@@ -145,6 +152,8 @@ module dca::turbos {
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
+        _is_exact_in: bool,
+        _receiver: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -158,7 +167,7 @@ module dca::turbos {
 
         vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
 
-        dca::assert_min_price(amount_threshold, &promise);
+        dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_a_b_c_b(
             pool_a,
@@ -189,6 +198,8 @@ module dca::turbos {
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
+        _is_exact_in: bool,
+        _receiver: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -202,7 +213,7 @@ module dca::turbos {
 
         vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
 
-        dca::assert_min_price(amount_threshold, &promise);
+        dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_b_a_b_c(
             pool_a,
@@ -233,6 +244,8 @@ module dca::turbos {
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
+        _is_exact_in: bool,
+        _receiver: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -246,7 +259,7 @@ module dca::turbos {
 
         vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
 
-        dca::assert_min_price(amount_threshold, &promise);
+        dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_b_a_c_b(
             pool_a,

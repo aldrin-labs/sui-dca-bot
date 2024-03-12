@@ -1,6 +1,6 @@
 module dca::dca {
     // use std::debug::print;
-    use std::option::{Option, Self, none};
+    use std::option::{Option, Self, none, is_some, borrow};
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{TxContext, sender};
     use sui::balance::{Self, Balance};
@@ -495,7 +495,7 @@ module dca::dca {
         div(input_amount, orders)
     }
 
-    fun compute_min_price(input_amount: u64, max_price: u64): u64 {
+    fun compute_min_output(input_amount: u64, max_price: u64): u64 {
         // Rounds down
         div(input_amount, max_price)
     }
@@ -517,7 +517,7 @@ module dca::dca {
         } else {
             let max_price = option::borrow(&dca.trade_params.max_price);
 
-            let min_output = compute_min_price(input_amount, *max_price);
+            let min_output = compute_min_output(input_amount, *max_price);
             min_output
         }
     }
@@ -622,12 +622,23 @@ module dca::dca {
         assert!(has_time_passed == true, ENotEnoughTimePassed);
     }
 
-    public(friend) fun assert_min_price<Input, Output>(amount: u64, promise: &TradePromise<Input, Output>) {
+    public(friend) fun assert_max_price_via_output<Input, Output>(output_amount: u64, promise: &TradePromise<Input, Output>) {
         let min_output = trade_min_output(promise);
         assert!(
-            amount >= min_output,
+            output_amount >= min_output,
             EAboveMaxPrice
         );
+    }
+    
+    public(friend) fun assert_max_price<Input, Output>(input_amount: u64, output_amount: u64, dca: &DCA<Input, Output>) {
+        if (is_some(&dca.trade_params.max_price)) {
+            let max_price = borrow(&dca.trade_params.max_price);
+
+            assert!(
+                input_amount <= mul(*max_price, output_amount),
+                EAboveMaxPrice
+            );
+        }
     }
 
     public(friend) fun fee_amount(amount: u64): u64 {
@@ -697,21 +708,21 @@ module dca::dca {
     
     #[test]
     fun test_compute_min_price() {
-        assert!(compute_min_price(100000, 3) == 33333, 0);
-        assert!(compute_min_price(100000, 33) == 3030, 0);
-        assert!(compute_min_price(100000, 333) == 300, 0);
-        assert!(compute_min_price(100000, 3333) == 30, 0);
-        assert!(compute_min_price(100000, 33333) == 3, 0);
-        assert!(compute_min_price(100000, 333333) == 0, 0);
-        assert!(compute_min_price(100000, 3333333) == 0, 0);
+        assert!(compute_min_output(100000, 3) == 33333, 0);
+        assert!(compute_min_output(100000, 33) == 3030, 0);
+        assert!(compute_min_output(100000, 333) == 300, 0);
+        assert!(compute_min_output(100000, 3333) == 30, 0);
+        assert!(compute_min_output(100000, 33333) == 3, 0);
+        assert!(compute_min_output(100000, 333333) == 0, 0);
+        assert!(compute_min_output(100000, 3333333) == 0, 0);
 
         // Rounds down
-        assert!(compute_min_price(777777, 3) == 259259, 0); // 259259
-        assert!(compute_min_price(777777, 33) == 23569, 0); // 23569
-        assert!(compute_min_price(777777, 333) == 2335, 0); // 2335.666667
-        assert!(compute_min_price(777777, 3333) == 233, 0); // 233.3564356
-        assert!(compute_min_price(777777, 33333) == 23, 0); // 23.33354334
-        assert!(compute_min_price(777777, 333333) == 2, 0); // 2.333333333
-        assert!(compute_min_price(777777, 3333333) == 0, 0); // 0.233333123
+        assert!(compute_min_output(777777, 3) == 259259, 0); // 259259
+        assert!(compute_min_output(777777, 33) == 23569, 0); // 23569
+        assert!(compute_min_output(777777, 333) == 2335, 0); // 2335.666667
+        assert!(compute_min_output(777777, 3333) == 233, 0); // 233.3564356
+        assert!(compute_min_output(777777, 33333) == 23, 0); // 23.33354334
+        assert!(compute_min_output(777777, 333333) == 2, 0); // 2.333333333
+        assert!(compute_min_output(777777, 3333333) == 0, 0); // 0.233333123
     }
 }

@@ -61,7 +61,7 @@ module dca::cetus {
             ctx
         );
 
-        dca::assert_min_price(coin::value(&coin_b), &promise);
+        dca::assert_max_price_via_output(coin::value(&coin_b), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_b, dca::owner(dca));
@@ -110,7 +110,7 @@ module dca::cetus {
             ctx
         );
 
-        dca::assert_min_price(coin::value(&coin_a), &promise);
+        dca::assert_max_price_via_output(coin::value(&coin_a), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_b, dca::owner(dca));
@@ -158,7 +158,7 @@ module dca::cetus {
             ctx
         );
 
-        dca::assert_min_price(coin::value(&coin_c), &promise);
+        dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));
@@ -206,7 +206,7 @@ module dca::cetus {
             ctx
         );
 
-        dca::assert_min_price(coin::value(&coin_c), &promise);
+        dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));
@@ -254,7 +254,7 @@ module dca::cetus {
             ctx
         );
 
-        dca::assert_min_price(coin::value(&coin_c), &promise);
+        dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));
@@ -302,7 +302,7 @@ module dca::cetus {
             ctx
         );
 
-        dca::assert_min_price(coin::value(&coin_c), &promise);
+        dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
         transfer::public_transfer(coin_c, dca::owner(dca));

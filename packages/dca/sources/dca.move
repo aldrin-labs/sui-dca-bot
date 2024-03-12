@@ -239,7 +239,7 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         clock: &Clock,
         ctx: &mut TxContext,
-    ): (Coin<Input>, TradePromise<Input, Output>) {
+    ): (Balance<Input>, TradePromise<Input, Output>) {
         assert_delegatee(dca, ctx);
         assert_active(dca);
 
@@ -272,7 +272,7 @@ module dca::dca {
             min_output: get_min_output_amount(dca, input),
         };
         
-        (coin::from_balance(input_funds, ctx), promise)
+        (input_funds, promise)
     }
     
     public(friend) fun resolve_trade<Input, Output>(

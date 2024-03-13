@@ -1,7 +1,6 @@
 // wrapper for module turbos_clmm::swap_router
 #[allow(lint(self_transfer))]
 module dca::turbos {
-    use std::vector;
     use sui::tx_context::{TxContext, sender};
     use turbos_clmm::swap_router;
     use turbos_clmm::pool::{Pool, Versioned};
@@ -13,7 +12,7 @@ module dca::turbos {
 
     public fun swap_a_b<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
-        coins_a: vector<Coin<CoinTypeA>>,
+        coin_a: Coin<CoinTypeA>,
 		// Exact input amount
         _amount: u64, // todo assert
         amount_threshold: u64, // Minimum output amount
@@ -31,14 +30,13 @@ module dca::turbos {
 
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = balance::value(&funds);
-
-        vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
+        balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_a_b(
             pool,
-            coins_a,
+            vector[coin_a],
             amount,
             amount_threshold,
             sqrt_price_limit,
@@ -56,7 +54,7 @@ module dca::turbos {
 
     public fun swap_b_a<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
-        coins_b: vector<Coin<CoinTypeB>>,
+        coin_b: Coin<CoinTypeB>,
 		// Exact input amount
         _amount: u64, // todo assert
         amount_threshold: u64,
@@ -74,14 +72,13 @@ module dca::turbos {
 
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = balance::value(&funds);
-
-        vector::push_back(&mut coins_b, coin::from_balance(funds, ctx));
+        balance::join(coin::balance_mut(&mut coin_b), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_b_a(
             pool,
-            coins_b,
+            vector[coin_b],
             amount,
             amount_threshold,
             sqrt_price_limit,
@@ -100,7 +97,7 @@ module dca::turbos {
     public fun swap_a_b_b_c<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeA, CoinTypeB, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeB, CoinTypeC, FeeTypeB>,
-        coins_a: vector<Coin<CoinTypeA>>,
+        coin_a: Coin<CoinTypeA>,
 		// Exact input amount
         _amount: u64, // todo assert
         amount_threshold: u64,
@@ -118,15 +115,14 @@ module dca::turbos {
         let is_exact_in = true;
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = balance::value(&funds);
-
-        vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
+        balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_a_b_b_c(
             pool_a,
             pool_b,
-            coins_a,
+            vector[coin_a],
             amount,
             amount_threshold,
             sqrt_price_limit_one,
@@ -146,7 +142,7 @@ module dca::turbos {
     public fun swap_a_b_c_b<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeA, CoinTypeB, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeC, CoinTypeB, FeeTypeB>,
-        coins_a: vector<Coin<CoinTypeA>>,
+        coin_a: Coin<CoinTypeA>,
 		// Exact input amount
         _amount: u64, // todo assert
         amount_threshold: u64,
@@ -164,15 +160,14 @@ module dca::turbos {
         let is_exact_in = true;
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = balance::value(&funds);
-
-        vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
+        balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_a_b_c_b(
             pool_a,
             pool_b,
-            coins_a,
+            vector[coin_a],
             amount,
             amount_threshold,
             sqrt_price_limit_one,
@@ -192,7 +187,7 @@ module dca::turbos {
     public fun swap_b_a_b_c<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeB, CoinTypeA, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeB, CoinTypeC, FeeTypeB>,
-        coins_a: vector<Coin<CoinTypeA>>,
+        coin_a: Coin<CoinTypeA>,
 		// Exact input amount
         _amount: u64, // todo assert
         amount_threshold: u64,
@@ -210,15 +205,14 @@ module dca::turbos {
         let is_exact_in = true;
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = balance::value(&funds);
-
-        vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
+        balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_b_a_b_c(
             pool_a,
             pool_b,
-            coins_a,
+            vector[coin_a],
             amount,
             amount_threshold,
             sqrt_price_limit_one,
@@ -238,7 +232,7 @@ module dca::turbos {
     public fun swap_b_a_c_b<CoinTypeA, FeeTypeA, CoinTypeB, FeeTypeB, CoinTypeC>(
 		pool_a: &mut Pool<CoinTypeB, CoinTypeA, FeeTypeA>,
         pool_b: &mut Pool<CoinTypeC, CoinTypeB, FeeTypeB>,
-        coins_a: vector<Coin<CoinTypeA>>,
+        coin_a: Coin<CoinTypeA>,
 		// Exact input amount
         _amount: u64, // todo assert
         amount_threshold: u64,
@@ -256,15 +250,14 @@ module dca::turbos {
         let is_exact_in = true;
         let (funds, promise) = init_trade(dca, clock, ctx);
         let amount = balance::value(&funds);
-
-        vector::push_back(&mut coins_a, coin::from_balance(funds, ctx));
+        balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
 
         swap_router::swap_b_a_c_b(
             pool_a,
             pool_b,
-            coins_a,
+            vector[coin_a],
             amount,
             amount_threshold,
             sqrt_price_limit_one,

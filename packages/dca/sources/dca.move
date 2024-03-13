@@ -474,6 +474,11 @@ module dca::dca {
     public fun trade_input<Input, Output>(promise: &TradePromise<Input, Output>): u64 { promise.input }
     public fun trade_min_output<Input, Output>(promise: &TradePromise<Input, Output>): u64 { promise.min_output }
 
+    public fun gas_budget_per_trade(): u64 { GAS_BUDGET_PER_TRADE }
+    public fun base_fee_bps(): u64 { BASE_FEES_BPS }
+    public fun order_limit(): u64 { ORDER_LIMIT }
+    public fun minimum_funding_per_trade(): u64 { MINIMUM_FUNDING_PER_TRADE }
+
     // === Private Functions ===
 
     fun recompute_split_allocation<Input, Output>(dca: &mut DCA<Input, Output>) {

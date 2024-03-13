@@ -12,7 +12,7 @@ import {SuiClient, SuiParsedData} from "@mysten/sui.js/client";
 
 export function isDCA(type: string): boolean {
     type = compressSuiType(type);
-    return type.startsWith("0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCA<");
+    return type.startsWith("0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCA<");
 }
 
 export interface DCAFields<Input extends PhantomTypeArgument, Output extends PhantomTypeArgument> {
@@ -25,12 +25,12 @@ export type DCAReified<Input extends PhantomTypeArgument, Output extends Phantom
 >;
 
 export class DCA<Input extends PhantomTypeArgument, Output extends PhantomTypeArgument> implements StructClass {
-    static readonly $typeName = "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCA";
+    static readonly $typeName = "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCA";
     static readonly $numTypeParams = 2;
 
     readonly $typeName = DCA.$typeName;
 
-    readonly $fullTypeName: `0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCA<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
+    readonly $fullTypeName: `0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCA<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
 
     readonly $typeArgs: [PhantomToTypeStr<Input>, PhantomToTypeStr<Output>];
 
@@ -66,7 +66,7 @@ export class DCA<Input extends PhantomTypeArgument, Output extends PhantomTypeAr
         this.$fullTypeName = composeSuiType(
             DCA.$typeName,
             ...typeArgs
-        ) as `0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCA<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
+        ) as `0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCA<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
         this.$typeArgs = typeArgs;
 
         this.id = fields.id;; this.owner = fields.owner;; this.delegatee = fields.delegatee;; this.startTimeMs = fields.startTimeMs;; this.lastTimeMs = fields.lastTimeMs;; this.every = fields.every;; this.remainingOrders = fields.remainingOrders;; this.timeScale = fields.timeScale;; this.inputBalance = fields.inputBalance;; this.splitAllocation = fields.splitAllocation;; this.tradeParams = fields.tradeParams;; this.active = fields.active;; this.gasBudget = fields.gasBudget;
@@ -80,7 +80,7 @@ export class DCA<Input extends PhantomTypeArgument, Output extends PhantomTypeAr
             fullTypeName: composeSuiType(
                 DCA.$typeName,
                 ...[extractType(Input), extractType(Output)]
-            ) as `0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCA<${PhantomToTypeStr<ToPhantomTypeArgument<Input>>}, ${PhantomToTypeStr<ToPhantomTypeArgument<Output>>}>`,
+            ) as `0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCA<${PhantomToTypeStr<ToPhantomTypeArgument<Input>>}, ${PhantomToTypeStr<ToPhantomTypeArgument<Output>>}>`,
             typeArgs: [
                 extractType(Input), extractType(Output)
             ] as [PhantomToTypeStr<ToPhantomTypeArgument<Input>>, PhantomToTypeStr<ToPhantomTypeArgument<Output>>],
@@ -304,7 +304,7 @@ export class DCA<Input extends PhantomTypeArgument, Output extends PhantomTypeAr
 
 export function isDCACreatedEvent(type: string): boolean {
     type = compressSuiType(type);
-    return type === "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCACreatedEvent";
+    return type === "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCACreatedEvent";
 }
 
 export interface DCACreatedEventFields {
@@ -317,12 +317,12 @@ export type DCACreatedEventReified = Reified<
 >;
 
 export class DCACreatedEvent implements StructClass {
-    static readonly $typeName = "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCACreatedEvent";
+    static readonly $typeName = "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCACreatedEvent";
     static readonly $numTypeParams = 0;
 
     readonly $typeName = DCACreatedEvent.$typeName;
 
-    readonly $fullTypeName: "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCACreatedEvent";
+    readonly $fullTypeName: "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCACreatedEvent";
 
     readonly $typeArgs: [];
 
@@ -338,7 +338,7 @@ export class DCACreatedEvent implements StructClass {
         this.$fullTypeName = composeSuiType(
             DCACreatedEvent.$typeName,
             ...typeArgs
-        ) as "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCACreatedEvent";
+        ) as "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCACreatedEvent";
         this.$typeArgs = typeArgs;
 
         this.id = fields.id;; this.owner = fields.owner;; this.delegatee = fields.delegatee;
@@ -350,7 +350,7 @@ export class DCACreatedEvent implements StructClass {
             fullTypeName: composeSuiType(
                 DCACreatedEvent.$typeName,
                 ...[]
-            ) as "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::DCACreatedEvent",
+            ) as "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::DCACreatedEvent",
             typeArgs: [] as [],
             reifiedTypeArgs: [],
             fromFields: (fields: Record<string, any>) =>
@@ -524,7 +524,7 @@ export class DCACreatedEvent implements StructClass {
 
 export function isProofKey(type: string): boolean {
     type = compressSuiType(type);
-    return type === "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::ProofKey";
+    return type === "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::ProofKey";
 }
 
 export interface ProofKeyFields {
@@ -537,12 +537,12 @@ export type ProofKeyReified = Reified<
 >;
 
 export class ProofKey implements StructClass {
-    static readonly $typeName = "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::ProofKey";
+    static readonly $typeName = "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::ProofKey";
     static readonly $numTypeParams = 0;
 
     readonly $typeName = ProofKey.$typeName;
 
-    readonly $fullTypeName: "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::ProofKey";
+    readonly $fullTypeName: "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::ProofKey";
 
     readonly $typeArgs: [];
 
@@ -554,7 +554,7 @@ export class ProofKey implements StructClass {
         this.$fullTypeName = composeSuiType(
             ProofKey.$typeName,
             ...typeArgs
-        ) as "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::ProofKey";
+        ) as "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::ProofKey";
         this.$typeArgs = typeArgs;
 
         this.dummyField = fields.dummyField;
@@ -566,7 +566,7 @@ export class ProofKey implements StructClass {
             fullTypeName: composeSuiType(
                 ProofKey.$typeName,
                 ...[]
-            ) as "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::ProofKey",
+            ) as "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::ProofKey",
             typeArgs: [] as [],
             reifiedTypeArgs: [],
             fromFields: (fields: Record<string, any>) =>
@@ -734,7 +734,7 @@ export class ProofKey implements StructClass {
 
 export function isTradeParams(type: string): boolean {
     type = compressSuiType(type);
-    return type === "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradeParams";
+    return type === "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradeParams";
 }
 
 export interface TradeParamsFields {
@@ -747,12 +747,12 @@ export type TradeParamsReified = Reified<
 >;
 
 export class TradeParams implements StructClass {
-    static readonly $typeName = "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradeParams";
+    static readonly $typeName = "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradeParams";
     static readonly $numTypeParams = 0;
 
     readonly $typeName = TradeParams.$typeName;
 
-    readonly $fullTypeName: "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradeParams";
+    readonly $fullTypeName: "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradeParams";
 
     readonly $typeArgs: [];
 
@@ -766,7 +766,7 @@ export class TradeParams implements StructClass {
         this.$fullTypeName = composeSuiType(
             TradeParams.$typeName,
             ...typeArgs
-        ) as "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradeParams";
+        ) as "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradeParams";
         this.$typeArgs = typeArgs;
 
         this.minPrice = fields.minPrice;; this.maxPrice = fields.maxPrice;
@@ -778,7 +778,7 @@ export class TradeParams implements StructClass {
             fullTypeName: composeSuiType(
                 TradeParams.$typeName,
                 ...[]
-            ) as "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradeParams",
+            ) as "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradeParams",
             typeArgs: [] as [],
             reifiedTypeArgs: [],
             fromFields: (fields: Record<string, any>) =>
@@ -948,7 +948,7 @@ export class TradeParams implements StructClass {
 
 export function isTradePromise(type: string): boolean {
     type = compressSuiType(type);
-    return type.startsWith("0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradePromise<");
+    return type.startsWith("0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradePromise<");
 }
 
 export interface TradePromiseFields<Input extends PhantomTypeArgument, Output extends PhantomTypeArgument> {
@@ -961,12 +961,12 @@ export type TradePromiseReified<Input extends PhantomTypeArgument, Output extend
 >;
 
 export class TradePromise<Input extends PhantomTypeArgument, Output extends PhantomTypeArgument> implements StructClass {
-    static readonly $typeName = "0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradePromise";
+    static readonly $typeName = "0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradePromise";
     static readonly $numTypeParams = 2;
 
     readonly $typeName = TradePromise.$typeName;
 
-    readonly $fullTypeName: `0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradePromise<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
+    readonly $fullTypeName: `0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradePromise<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
 
     readonly $typeArgs: [PhantomToTypeStr<Input>, PhantomToTypeStr<Output>];
 
@@ -980,7 +980,7 @@ export class TradePromise<Input extends PhantomTypeArgument, Output extends Phan
         this.$fullTypeName = composeSuiType(
             TradePromise.$typeName,
             ...typeArgs
-        ) as `0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradePromise<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
+        ) as `0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradePromise<${PhantomToTypeStr<Input>}, ${PhantomToTypeStr<Output>}>`;
         this.$typeArgs = typeArgs;
 
         this.input = fields.input;; this.minOutput = fields.minOutput;
@@ -994,7 +994,7 @@ export class TradePromise<Input extends PhantomTypeArgument, Output extends Phan
             fullTypeName: composeSuiType(
                 TradePromise.$typeName,
                 ...[extractType(Input), extractType(Output)]
-            ) as `0x495de18feac86973ee1f88d9ad2cc52592ec8f2afdf05e95a1aa3bf1ef312b84::dca::TradePromise<${PhantomToTypeStr<ToPhantomTypeArgument<Input>>}, ${PhantomToTypeStr<ToPhantomTypeArgument<Output>>}>`,
+            ) as `0x21464c5246d6ec60b10fc46a0adb7ff9915f6f07c8fc0bcbc8607541db912de::dca::TradePromise<${PhantomToTypeStr<ToPhantomTypeArgument<Input>>}, ${PhantomToTypeStr<ToPhantomTypeArgument<Output>>}>`,
             typeArgs: [
                 extractType(Input), extractType(Output)
             ] as [PhantomToTypeStr<ToPhantomTypeArgument<Input>>, PhantomToTypeStr<ToPhantomTypeArgument<Output>>],

@@ -9,6 +9,8 @@ import * as tick from "./tick/structs";
 import {StructClassLoader} from "../../../_framework/loader";
 
 export function registerClasses(loader: StructClassLoader) {
+    loader.register(tick.Tick);
+    loader.register(tick.TickManager);
     loader.register(acl.ACL);
     loader.register(acl.Member);
     loader.register(config.AddFeeTierEvent);
@@ -25,15 +27,17 @@ export function registerClasses(loader: StructClassLoader) {
     loader.register(config.SetRolesEvent);
     loader.register(config.UpdateFeeRateEvent);
     loader.register(config.UpdateFeeTierEvent);
+    loader.register(rewarder.DepositEvent);
+    loader.register(rewarder.EmergentWithdrawEvent);
+    loader.register(rewarder.Rewarder);
+    loader.register(rewarder.RewarderGlobalVault);
+    loader.register(rewarder.RewarderInitEvent);
+    loader.register(rewarder.RewarderManager);
     loader.register(position.POSITION);
     loader.register(position.Position);
     loader.register(position.PositionInfo);
     loader.register(position.PositionManager);
     loader.register(position.PositionReward);
-    loader.register(factory.CreatePoolEvent);
-    loader.register(factory.InitFactoryEvent);
-    loader.register(factory.PoolSimpleInfo);
-    loader.register(factory.Pools);
     loader.register(partner.ClaimRefFeeEvent);
     loader.register(partner.CreatePartnerEvent);
     loader.register(partner.InitPartnerEvent);
@@ -43,14 +47,6 @@ export function registerClasses(loader: StructClassLoader) {
     loader.register(partner.ReceiveRefFeeEvent);
     loader.register(partner.UpdateRefFeeRateEvent);
     loader.register(partner.UpdateTimeRangeEvent);
-    loader.register(tick.Tick);
-    loader.register(tick.TickManager);
-    loader.register(rewarder.DepositEvent);
-    loader.register(rewarder.EmergentWithdrawEvent);
-    loader.register(rewarder.Rewarder);
-    loader.register(rewarder.RewarderGlobalVault);
-    loader.register(rewarder.RewarderInitEvent);
-    loader.register(rewarder.RewarderManager);
     loader.register(pool.UpdateFeeRateEvent);
     loader.register(pool.AddLiquidityEvent);
     loader.register(pool.AddLiquidityReceipt);
@@ -69,4 +65,8 @@ export function registerClasses(loader: StructClassLoader) {
     loader.register(pool.SwapResult);
     loader.register(pool.SwapStepResult);
     loader.register(pool.UpdateEmissionEvent);
+    loader.register(factory.CreatePoolEvent);
+    loader.register(factory.InitFactoryEvent);
+    loader.register(factory.PoolSimpleInfo);
+    loader.register(factory.Pools);
 }

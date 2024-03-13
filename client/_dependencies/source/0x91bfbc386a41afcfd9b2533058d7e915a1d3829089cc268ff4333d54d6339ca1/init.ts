@@ -13,8 +13,8 @@ export function registerClasses(loader: StructClassLoader) {
     loader.register(i64.I64);
     loader.register(i128.I128);
     loader.register(pool.Versioned);
-    loader.register(pool.Position);
     loader.register(pool.Tick);
+    loader.register(pool.Position);
     loader.register(pool.Pool);
     loader.register(pool.ComputeSwapState);
     loader.register(pool.PoolRewardInfo);

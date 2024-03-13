@@ -39,7 +39,7 @@ export function checkCoinThreshold(
 }
 
 export interface SwapAbBcArgs {
-    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
+    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; inputFunds: ObjectArg; outputFunds: ObjectArg; byAmountIn: boolean | TransactionArgument; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
 }
 
 export function swapAbBc(
@@ -51,13 +51,13 @@ export function swapAbBc(
         target: `${PUBLISHED_AT}::cetus::swap_ab_bc`,
         typeArguments: typeArgs,
         arguments: [
-            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
+            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), obj(txb, args.inputFunds), obj(txb, args.outputFunds), pure(txb, args.byAmountIn, `bool`), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
         ],
     })
 }
 
 export interface SwapAbCbArgs {
-    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
+    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; inputFunds: ObjectArg; outputFunds: ObjectArg; byAmountIn: boolean | TransactionArgument; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
 }
 
 export function swapAbCb(
@@ -69,13 +69,13 @@ export function swapAbCb(
         target: `${PUBLISHED_AT}::cetus::swap_ab_cb`,
         typeArguments: typeArgs,
         arguments: [
-            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
+            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), obj(txb, args.inputFunds), obj(txb, args.outputFunds), pure(txb, args.byAmountIn, `bool`), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
         ],
     })
 }
 
 export interface SwapBaBcArgs {
-    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
+    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; inputFunds: ObjectArg; outputFunds: ObjectArg; byAmountIn: boolean | TransactionArgument; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
 }
 
 export function swapBaBc(
@@ -87,13 +87,13 @@ export function swapBaBc(
         target: `${PUBLISHED_AT}::cetus::swap_ba_bc`,
         typeArguments: typeArgs,
         arguments: [
-            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
+            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), obj(txb, args.inputFunds), obj(txb, args.outputFunds), pure(txb, args.byAmountIn, `bool`), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
         ],
     })
 }
 
 export interface SwapBaCbArgs {
-    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
+    config: ObjectArg; poolI: ObjectArg; poolIi: ObjectArg; inputFunds: ObjectArg; outputFunds: ObjectArg; byAmountIn: boolean | TransactionArgument; amount0: bigint | TransactionArgument; amount1: bigint | TransactionArgument; sqrtPriceLimit0: bigint | TransactionArgument; sqrtPriceLimit1: bigint | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
 }
 
 export function swapBaCb(
@@ -105,13 +105,13 @@ export function swapBaCb(
         target: `${PUBLISHED_AT}::cetus::swap_ba_cb`,
         typeArguments: typeArgs,
         arguments: [
-            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
+            obj(txb, args.config), obj(txb, args.poolI), obj(txb, args.poolIi), obj(txb, args.inputFunds), obj(txb, args.outputFunds), pure(txb, args.byAmountIn, `bool`), pure(txb, args.amount0, `u64`), pure(txb, args.amount1, `u64`), pure(txb, args.sqrtPriceLimit0, `u128`), pure(txb, args.sqrtPriceLimit1, `u128`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
         ],
     })
 }
 
 export interface SwapAbArgs {
-    config: ObjectArg; pool: ObjectArg; sqrtPriceLimit: bigint | TransactionArgument; arg8: boolean | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
+    config: ObjectArg; pool: ObjectArg; inputFunds: ObjectArg; outputFunds: ObjectArg; a2B: boolean | TransactionArgument; byAmountIn: boolean | TransactionArgument; amount: bigint | TransactionArgument; sqrtPriceLimit: bigint | TransactionArgument; arg8: boolean | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
 }
 
 export function swapAb(
@@ -123,13 +123,13 @@ export function swapAb(
         target: `${PUBLISHED_AT}::cetus::swap_ab`,
         typeArguments: typeArgs,
         arguments: [
-            obj(txb, args.config), obj(txb, args.pool), pure(txb, args.sqrtPriceLimit, `u128`), pure(txb, args.arg8, `bool`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
+            obj(txb, args.config), obj(txb, args.pool), obj(txb, args.inputFunds), obj(txb, args.outputFunds), pure(txb, args.a2B, `bool`), pure(txb, args.byAmountIn, `bool`), pure(txb, args.amount, `u64`), pure(txb, args.sqrtPriceLimit, `u128`), pure(txb, args.arg8, `bool`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
         ],
     })
 }
 
 export interface SwapBaArgs {
-    config: ObjectArg; pool: ObjectArg; sqrtPriceLimit: bigint | TransactionArgument; arg8: boolean | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
+    config: ObjectArg; pool: ObjectArg; inputFunds: ObjectArg; outputFunds: ObjectArg; a2B: boolean | TransactionArgument; byAmountIn: boolean | TransactionArgument; amount: bigint | TransactionArgument; sqrtPriceLimit: bigint | TransactionArgument; arg8: boolean | TransactionArgument; clock: ObjectArg; dca: ObjectArg; gasCost: bigint | TransactionArgument
 }
 
 export function swapBa(
@@ -141,7 +141,7 @@ export function swapBa(
         target: `${PUBLISHED_AT}::cetus::swap_ba`,
         typeArguments: typeArgs,
         arguments: [
-            obj(txb, args.config), obj(txb, args.pool), pure(txb, args.sqrtPriceLimit, `u128`), pure(txb, args.arg8, `bool`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
+            obj(txb, args.config), obj(txb, args.pool), obj(txb, args.inputFunds), obj(txb, args.outputFunds), pure(txb, args.a2B, `bool`), pure(txb, args.byAmountIn, `bool`), pure(txb, args.amount, `u64`), pure(txb, args.sqrtPriceLimit, `u128`), pure(txb, args.arg8, `bool`), obj(txb, args.clock), obj(txb, args.dca), pure(txb, args.gasCost, `u64`)
         ],
     })
 }

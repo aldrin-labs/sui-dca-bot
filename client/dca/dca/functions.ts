@@ -184,20 +184,38 @@ export function assertInputBalance(
     })
 }
 
-export interface AssertMinPriceArgs {
-    amount: bigint | TransactionArgument; promise: ObjectArg
+export interface AssertMaxPriceArgs {
+    inputAmount: bigint | TransactionArgument; outputAmount: bigint | TransactionArgument; dca: ObjectArg
 }
 
-export function assertMinPrice(
+export function assertMaxPrice(
     txb: TransactionBlock,
     typeArgs: [string, string],
-    args: AssertMinPriceArgs
+    args: AssertMaxPriceArgs
 ) {
     return txb.moveCall({
-        target: `${PUBLISHED_AT}::dca::assert_min_price`,
+        target: `${PUBLISHED_AT}::dca::assert_max_price`,
         typeArguments: typeArgs,
         arguments: [
-            pure(txb, args.amount, `u64`), obj(txb, args.promise)
+            pure(txb, args.inputAmount, `u64`), pure(txb, args.outputAmount, `u64`), obj(txb, args.dca)
+        ],
+    })
+}
+
+export interface AssertMaxPriceViaOutputArgs {
+    outputAmount: bigint | TransactionArgument; promise: ObjectArg
+}
+
+export function assertMaxPriceViaOutput(
+    txb: TransactionBlock,
+    typeArgs: [string, string],
+    args: AssertMaxPriceViaOutputArgs
+) {
+    return txb.moveCall({
+        target: `${PUBLISHED_AT}::dca::assert_max_price_via_output`,
+        typeArguments: typeArgs,
+        arguments: [
+            pure(txb, args.outputAmount, `u64`), obj(txb, args.promise)
         ],
     })
 }
@@ -294,16 +312,16 @@ export function assertTimeScale(
     })
 }
 
-export interface ComputeMinPriceArgs {
+export interface ComputeMinOutputArgs {
     inputAmount: bigint | TransactionArgument; maxPrice: bigint | TransactionArgument
 }
 
-export function computeMinPrice(
+export function computeMinOutput(
     txb: TransactionBlock,
-    args: ComputeMinPriceArgs
+    args: ComputeMinOutputArgs
 ) {
     return txb.moveCall({
-        target: `${PUBLISHED_AT}::dca::compute_min_price`,
+        target: `${PUBLISHED_AT}::dca::compute_min_output`,
         arguments: [
             pure(txb, args.inputAmount, `u64`), pure(txb, args.maxPrice, `u64`)
         ],

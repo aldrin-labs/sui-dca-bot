@@ -9,8 +9,9 @@ import * as positionNft from "./position-nft/structs";
 import {StructClassLoader} from "../../../_framework/loader";
 
 export function registerClasses(loader: StructClassLoader) {
-    loader.register(i32.I32);
+    loader.register(fee.Fee);
     loader.register(i64.I64);
+    loader.register(i32.I32);
     loader.register(i128.I128);
     loader.register(pool.Versioned);
     loader.register(pool.Position);
@@ -20,7 +21,6 @@ export function registerClasses(loader: StructClassLoader) {
     loader.register(pool.PoolRewardInfo);
     loader.register(pool.PoolRewardVault);
     loader.register(pool.PositionRewardInfo);
-    loader.register(fee.Fee);
     loader.register(positionNft.TurbosPositionNFT);
     loader.register(positionManager.Position);
     loader.register(positionManager.PositionRewardInfo);

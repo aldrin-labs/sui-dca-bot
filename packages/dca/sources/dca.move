@@ -22,7 +22,7 @@ module dca::dca {
     const GAS_BUDGET_PER_TRADE: u64 = 25_000_000;
     const BASE_FEES_BPS: u64 = 5;
     const ORDER_LIMIT: u64 = 25_000;
-    const MINIMUM_FUNDING_PER_TRADE: u64 = 100_000;
+    const MINIMUM_FUNDING_PER_TRADE: u64 = 10_000;
 
     // === Error Codes === 
     
@@ -242,10 +242,6 @@ module dca::dca {
     ): (Balance<Input>, TradePromise<Input, Output>) {
         assert_delegatee(dca, ctx);
         assert_active(dca);
-
-        // Assert that enough time has passed
-        let current_time = clock::timestamp_ms(clock);
-        assert_time(current_time, dca.last_time_ms, dca.every, dca.time_scale);
 
         // Pop funds, update last_time_ts, and update remaining orders
         let input_funds = if (dca.remaining_orders > 1) {

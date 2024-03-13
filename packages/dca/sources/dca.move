@@ -333,7 +333,7 @@ module dca::dca {
         dca.remaining_orders = dca.remaining_orders + new_orders;
 
         assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
-        assert_minimum_gas_funds(&dca.input_balance, dca.remaining_orders);
+        assert_minimum_gas_funds(coin::balance(gas_funds), dca.remaining_orders);
 
         let gas_budget = coin::into_balance(
             coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)

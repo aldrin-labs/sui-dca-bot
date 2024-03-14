@@ -105,7 +105,7 @@ module dca::dca {
         delegatee: address,
         input_funds: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
@@ -115,7 +115,7 @@ module dca::dca {
             delegatee,
             input_funds,
             every,
-            future_orders,
+            total_orders,
             time_scale,
             gas_funds,
             ctx,
@@ -129,22 +129,22 @@ module dca::dca {
         delegatee: address,
         input_funds: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
     ): DCA<Input, Output> {
         assert_time_scale(time_scale);
         assert_every(every, time_scale);
-        assert_how_many_orders(future_orders, every, time_scale);
-        assert_minimum_funding_per_trade(coin::balance(&input_funds), future_orders);
-        assert_minimum_gas_funds(coin::balance(gas_funds), future_orders);
+        assert_how_many_orders(total_orders, every, time_scale);
+        assert_minimum_funding_per_trade(coin::balance(&input_funds), total_orders);
+        assert_minimum_gas_funds(coin::balance(gas_funds), total_orders);
 
         let input_funds = coin::into_balance(input_funds);
 
         let current_time = clock::timestamp_ms(clock);
         // At init-time we set split_allocation = outlay / total_orders
-        let split_allocation = compute_split_allocation(balance::value(&input_funds), future_orders);
+        let split_allocation = compute_split_allocation(balance::value(&input_funds), total_orders);
 
         let dca_uid = object::new(ctx);
         let owner = sender(ctx);
@@ -155,7 +155,7 @@ module dca::dca {
             delegatee
         });
 
-        let gas_budget = coin::into_balance(coin::split(gas_funds, gas_budget_estimate(future_orders), ctx));
+        let gas_budget = coin::into_balance(coin::split(gas_funds, gas_budget_estimate(total_orders), ctx));
 
         DCA {
             id: dca_uid,
@@ -164,7 +164,7 @@ module dca::dca {
             start_time_ms: current_time,
             last_time_ms: current_time,
             every,
-            remaining_orders: future_orders,
+            remaining_orders: total_orders,
             time_scale,
             input_balance: input_funds,
             split_allocation,
@@ -180,7 +180,7 @@ module dca::dca {
         delegatee: address,
         outlay: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
         min_price: u64,
@@ -192,7 +192,7 @@ module dca::dca {
             delegatee,
             outlay,
             every,
-            future_orders,
+            total_orders,
             time_scale,
             gas_funds,
             min_price,
@@ -208,7 +208,7 @@ module dca::dca {
         delegatee: address,
         outlay: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
         min_price: u64,
@@ -220,7 +220,7 @@ module dca::dca {
             delegatee,
             outlay,
             every,
-            future_orders,
+            total_orders,
             time_scale,
             gas_funds,
             ctx,
@@ -423,13 +423,36 @@ module dca::dca {
         } else {
             balance::destroy_zero(input_balance);
         };
-
-        transfer::public_transfer(
-            coin::from_balance(gas_budget, ctx),
-            owner            
-        );
+        
+        if (balance::value(&gas_budget) > 0) {
+            let input_funds = coin::from_balance(gas_budget, ctx);
+            transfer::public_transfer(input_funds, owner);
+        } else {
+            balance::destroy_zero(gas_budget);
+        };
 
         object::delete(id);
+    }
+    
+    public fun redeem_funds_and_deactivate<Input, Output>(
+        dca: &mut DCA<Input, Output>,
+        ctx: &mut TxContext,
+    ) {
+        assert_owner_or_delegatee(dca, ctx);
+
+        if (balance::value(&dca.input_balance) > 0) {
+            let input_balance = balance::withdraw_all(&mut dca.input_balance);
+            let input_funds = coin::from_balance(input_balance, ctx);
+            transfer::public_transfer(input_funds, dca.owner);
+        };
+        
+        if (balance::value(&dca.gas_budget) > 0) {
+            let gas_budget = balance::withdraw_all(&mut dca.gas_budget);
+            let gas_budget = coin::from_balance(gas_budget, ctx);
+            transfer::public_transfer(gas_budget, dca.owner);
+        };
+
+        set_inactive_and_reset(dca);
     }
 
     // === Activity Setters ===
@@ -695,9 +718,6 @@ module dca::dca {
     public fun gas_budget_estimate_(n_tx: u64): u64 {
         gas_budget_estimate(n_tx)
     }
-    
-    #[test_only]
-    public fun minimum_funding_per_trade(): u64 { MINIMUM_FUNDING_PER_TRADE}
 
     // === Tests ===
 

@@ -80,7 +80,7 @@ module dca::flow_x {
 		balance::join(coin::balance_mut(&mut input_funds), funds);
 
 		dca::assert_max_price(_max_input_amount, exact_output, dca);
-		router::swap_exact_output_doublehop<INPUT, HOP1, OUTPUT>(clock, pools, input_funds, max_input_amount, exact_output, dca::owner(dca), sqrt_price, ctx);
+		router::swap_exact_output_triplehop<INPUT, HOP1, HOP2, OUTPUT>(clock, pools, input_funds, max_input_amount, exact_output, dca::owner(dca), sqrt_price, ctx);
 
 		let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
         transfer::public_transfer(gas_refund, sender(ctx));
@@ -158,75 +158,75 @@ module dca::flow_x {
 
 	// === Not in the router ===
 
-	// public fun swap_exact_input_direct<INPUT, OUTPUT>(
-	// 	pools: &mut Container,
-	// 	input_funds: Coin<INPUT>,
-	// 	dca: &mut DCA<INPUT, OUTPUT>,
-	// 	gas_cost: u64,
-	// 	clock: &Clock,
-	// 	ctx: &mut TxContext
-	// ) {
-	// 	assert!(coin::value(&input_funds) == 0, 0);
+	public fun swap_exact_input_direct<INPUT, OUTPUT>(
+		pools: &mut Container,
+		input_funds: Coin<INPUT>,
+		dca: &mut DCA<INPUT, OUTPUT>,
+		gas_cost: u64,
+		clock: &Clock,
+		ctx: &mut TxContext
+	) {
+		assert!(coin::value(&input_funds) == 0, 0);
 
-	// 	let (funds, promise) = init_trade(dca, clock, ctx);
-	// 	balance::join(coin::balance_mut(&mut input_funds), funds);
+		let (funds, promise) = init_trade(dca, clock, ctx);
+		balance::join(coin::balance_mut(&mut input_funds), funds);
 
-	// 	let coin = router::swap_exact_input_direct<INPUT, OUTPUT>(pools, input_funds, ctx);
+		let coin = router::swap_exact_input_direct<INPUT, OUTPUT>(pools, input_funds, ctx);
 
-	// 	dca::assert_max_price_via_output(coin::value(&coin), &promise);
+		dca::assert_max_price_via_output(coin::value(&coin), &promise);
 
-	// 	transfer::public_transfer(coin, dca::owner(dca));
+		transfer::public_transfer(coin, dca::owner(dca));
 
-	// 	let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
-    //     transfer::public_transfer(gas_refund, sender(ctx));
-	// }
+		let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
+	}
 
 
-	// public fun swap_exact_x_to_y_direct<X, Y>(
-	// 	pool: &mut PairMetadata<X, Y>,
-	// 	input_funds: Coin<X>,
-	// 	dca: &mut DCA<X, Y>,
-	// 	gas_cost: u64,
-	// 	clock: &Clock,
-	// 	ctx: &mut TxContext
-	// ) {
-	// 	assert!(coin::value(&input_funds) == 0, 0);
+	public fun swap_exact_x_to_y_direct<X, Y>(
+		pool: &mut PairMetadata<X, Y>,
+		input_funds: Coin<X>,
+		dca: &mut DCA<X, Y>,
+		gas_cost: u64,
+		clock: &Clock,
+		ctx: &mut TxContext
+	) {
+		assert!(coin::value(&input_funds) == 0, 0);
 
-	// 	let (funds, promise) = init_trade(dca, clock, ctx);
-    //     balance::join(coin::balance_mut(&mut input_funds), funds);
+		let (funds, promise) = init_trade(dca, clock, ctx);
+        balance::join(coin::balance_mut(&mut input_funds), funds);
 
-	// 	let coin = router::swap_exact_x_to_y_direct(pool, input_funds, ctx);
+		let coin = router::swap_exact_x_to_y_direct(pool, input_funds, ctx);
 
-	// 	dca::assert_max_price_via_output(coin::value(&coin), &promise);
+		dca::assert_max_price_via_output(coin::value(&coin), &promise);
 
-	// 	transfer::public_transfer(coin, dca::owner(dca));
+		transfer::public_transfer(coin, dca::owner(dca));
 
-	// 	let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
-    //     transfer::public_transfer(gas_refund, sender(ctx));
-	// }
+		let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
+	}
 	
-	// public fun swap_exact_y_to_x_direct<X, Y>(
-	// 	pool: &mut PairMetadata<X, Y>,
-	// 	input_funds: Coin<Y>,
-	// 	dca: &mut DCA<Y, X>,
-	// 	gas_cost: u64,
-	// 	clock: &Clock,
-	// 	ctx: &mut TxContext
-	// ) {
-	// 	assert!(coin::value(&input_funds) == 0, 0);
+	public fun swap_exact_y_to_x_direct<X, Y>(
+		pool: &mut PairMetadata<X, Y>,
+		input_funds: Coin<Y>,
+		dca: &mut DCA<Y, X>,
+		gas_cost: u64,
+		clock: &Clock,
+		ctx: &mut TxContext
+	) {
+		assert!(coin::value(&input_funds) == 0, 0);
 
-	// 	let (funds, promise) = init_trade(dca, clock, ctx);
-	// 	balance::join(coin::balance_mut(&mut input_funds), funds);
+		let (funds, promise) = init_trade(dca, clock, ctx);
+		balance::join(coin::balance_mut(&mut input_funds), funds);
 
-	// 	let coin = router::swap_exact_y_to_x_direct(pool, input_funds, ctx);
+		let coin = router::swap_exact_y_to_x_direct(pool, input_funds, ctx);
 
-	// 	dca::assert_max_price_via_output(coin::value(&coin), &promise);
+		dca::assert_max_price_via_output(coin::value(&coin), &promise);
 
-	// 	transfer::public_transfer(coin, dca::owner(dca));
+		transfer::public_transfer(coin, dca::owner(dca));
 
-	// 	let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
-    //     transfer::public_transfer(gas_refund, sender(ctx));
-	// }
+		let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);
+        transfer::public_transfer(gas_refund, sender(ctx));
+	}
 
 	// public fun swap_exact_output_direct<INPUT, OUTPUT>(arg_0: &mut Container, arg_1: Coin<INPUT>, arg_2: u64, arg_3: &mut TxContext): Coin<OUTPUT> {
 	// 	abort(0)

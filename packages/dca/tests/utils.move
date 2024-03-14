@@ -1,6 +1,6 @@
 #[test_only]
 module dca::test_utils {
-    use std::debug::print;
+    // use std::debug::print;
     use sui::clock::{Self, Clock};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -42,9 +42,9 @@ module dca::test_utils {
         let (input_coin, promise) = init_trade(dca, clock, ctx);
         let output_coin = coin::mint_for_testing<B>(output_amount, ctx);
 
-        dca::assert_min_price(coin::value(&output_coin), &promise);
+        dca::assert_max_price_via_output(coin::value(&output_coin), &promise);
 
-        transfer::public_transfer(input_coin, dca::owner(dca));
+        transfer::public_transfer(coin::from_balance(input_coin, ctx), dca::owner(dca));
         transfer::public_transfer(output_coin, dca::owner(dca));
 
         let gas_refund = resolve_trade(dca, promise, gas_cost, ctx);

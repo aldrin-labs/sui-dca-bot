@@ -17,7 +17,7 @@ module dca::dca {
     friend dca::flow_x;
     friend dca::turbos;
 
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
 
     // === CONSTS ===
 
@@ -347,11 +347,11 @@ module dca::dca {
         ctx: &mut TxContext,
     ) {
         check_version_and_upgrade(dca);
+        assert_minimum_gas_funds(coin::balance(gas_funds), new_orders);
 
         dca.remaining_orders = dca.remaining_orders + new_orders;
 
         assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
-        assert_minimum_gas_funds(coin::balance(gas_funds), dca.remaining_orders);
 
         let gas_budget = coin::into_balance(
             coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)

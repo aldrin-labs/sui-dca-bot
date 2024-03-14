@@ -17,6 +17,8 @@ module dca::dca {
     friend dca::flow_x;
     friend dca::turbos;
 
+    const VERSION: u64 = 1;
+
     // === CONSTS ===
 
     const GAS_BUDGET_PER_TRADE: u64 = 25_000_000;
@@ -26,22 +28,29 @@ module dca::dca {
 
     // === Error Codes === 
     
-    const EInvalidTimeScale: u64 = 1;
-    const EInvalidEvery: u64 = 2;
-    const EInvalidOwner: u64 = 3;
-    const EInvalidDelegatee: u64 = 4;
-    const EInvalidAuthority: u64 = 5;
-    const EInsufficientInputBalance: u64 = 6;
-    const ENotEnoughTimePassed: u64 = 7;
-    const EUnfundedAccount: u64 = 8;
-    const ENoRemainingOrders: u64 = 9;
+    const EWrongVersion: u64 = 0;
+    
+    // Init/activate errors
+    const EInvalidTimeScale: u64 = 10;
+    const EInvalidEvery: u64 = 11;
+    const EBelowMinimumFunding: u64 = 12;
+    const EInsufficientGasProvision: u64 = 13;
+    const EUnfundedAccount: u64 = 14;
+    const ENoRemainingOrders: u64 = 15;
+    const ETotalOrdersAboveLimit: u64 = 16;
+    
+    // IAM errors 
+    const EInvalidOwner: u64 = 20;
+    const EInvalidDelegatee: u64 = 21;
+    const EInvalidAuthority: u64 = 22;
+
+    // Trading/Withdraw errors
+    const ENotEnoughTimePassed: u64 = 30;
+    const EInactive: u64 = 31;
     #[allow(unused_const)]
-    const EBelowMinPrice: u64 = 10;
-    const EAboveMaxPrice: u64 = 11;
-    const EInactive: u64 = 12;
-    const ETotalOrdersAboveLimit: u64 = 13;
-    const EBelowMinimumFunding: u64 = 14;
-    const EInsufficientGasProvision: u64 = 15;
+    const EBelowMinPrice: u64 = 32;
+    const EAboveMaxPrice: u64 = 33;
+    const EInsufficientInputBalance: u64 = 34; // Withdraw error
 
     // === Structs ===
 
@@ -54,6 +63,7 @@ module dca::dca {
 
     struct DCA<phantom Input, phantom Output> has key, store {
         id: UID,
+        version: u64,
         /// The original owner of the funds
         owner: address,
         /// Address of the delagatee that can periodically withdraw the funds
@@ -159,6 +169,7 @@ module dca::dca {
 
         DCA {
             id: dca_uid,
+            version: VERSION,
             owner,
             delegatee,
             start_time_ms: current_time,
@@ -240,6 +251,7 @@ module dca::dca {
         clock: &Clock,
         ctx: &mut TxContext,
     ): (Balance<Input>, TradePromise<Input, Output>) {
+        check_version_and_upgrade(dca);
         assert_delegatee(dca, ctx);
         assert_active(dca);
 
@@ -281,6 +293,9 @@ module dca::dca {
         gas_cost: u64,
         ctx: &mut TxContext,
     ): Coin<SUI> {
+        // No need to assert version as its already checked in the
+        // `init_trade` function
+
         let TradePromise { input: _, min_output: _ } = promise;
 
         // If no more trades to make, set DCA to inactive
@@ -302,6 +317,7 @@ module dca::dca {
         gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
     ) {
+        check_version_and_upgrade(dca);
         assert_owner(dca, ctx);
         assert_minimum_funding_per_trade(coin::balance(&input_funds), new_orders);
         assert_minimum_gas_funds(coin::balance(gas_funds), new_orders);
@@ -330,6 +346,8 @@ module dca::dca {
         new_orders: u64,
         ctx: &mut TxContext,
     ) {
+        check_version_and_upgrade(dca);
+
         dca.remaining_orders = dca.remaining_orders + new_orders;
 
         assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
@@ -366,6 +384,7 @@ module dca::dca {
         decrease_orders: u64,
         ctx: &TxContext,
     ): (Balance<Input>, Balance<SUI>) {
+        check_version_and_upgrade(dca);
         assert_owner(dca, ctx);
         assert_input_balance(&dca.input_balance, amount);
 
@@ -388,6 +407,7 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         gas_funds: Coin<SUI>,
     ) {
+        check_version_and_upgrade(dca);
         let gas_budget = coin::into_balance(gas_funds);
         balance::join(&mut dca.gas_budget, gas_budget);
     }
@@ -399,10 +419,12 @@ module dca::dca {
         dca: DCA<Input, Output>,
         ctx: &mut TxContext,
     ) {
+        check_version_and_upgrade(&mut dca);
         assert_owner_or_delegatee(&dca, ctx);
 
         let DCA {
             id,
+            version: _,
             owner,
             delegatee: _,
             start_time_ms: _,
@@ -438,6 +460,7 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         ctx: &mut TxContext,
     ) {
+        check_version_and_upgrade(dca);
         assert_owner_or_delegatee(dca, ctx);
 
         if (balance::value(&dca.input_balance) > 0) {
@@ -461,6 +484,7 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         ctx: &TxContext,
     ) {
+        check_version_and_upgrade(dca);
         assert_owner_or_delegatee(dca, ctx);
 
         dca.active = false;
@@ -470,6 +494,7 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         ctx: &TxContext,
     ) {
+        check_version_and_upgrade(dca);
         assert_owner(dca, ctx);
 
         assert!(balance::value(&dca.input_balance) > 0, EUnfundedAccount);
@@ -677,6 +702,19 @@ module dca::dca {
         amount - fee_amount(amount)
     }
 
+    // === Versioning ===
+
+    fun assert_version<Input, Output>(dca: &DCA<Input, Output>) {
+        assert!(dca.version == VERSION, EWrongVersion);
+    }
+
+    fun check_version_and_upgrade<Input, Output>(dca: &mut DCA<Input, Output>) {
+        if (dca.version < VERSION) {
+            dca.version = VERSION;
+        };
+        assert_version(dca);
+    }
+
     // === Test-only functions ===
 
     #[test_only]
@@ -695,6 +733,7 @@ module dca::dca {
     public fun destroy_for_testing<Input, Output>(dca: DCA<Input, Output>) {
         let DCA {
             id,
+            version: _,
             owner: _,
             delegatee: _,
             start_time_ms: _,

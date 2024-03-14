@@ -1,7 +1,7 @@
 [package]
 name = "DCA"
 version = "0.0.1"
-published-at = "0xa74eb3567306ba569100dab765ed9bbbb83d581d912f742fd93ade2a1c4adb2f"
+published-at = "0x89b1372fa44ac2312a3876d83612d1dc9d298af332a42a153913558332a564d0"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
@@ -11,5 +11,4 @@ FlowXAMM = { local = "../interfaces/flow_x" }
 Cetus = { local = "../interfaces/cetus/cetus" }
 
 [addresses]
-# dca = "0xa74eb3567306ba569100dab765ed9bbbb83d581d912f742fd93ade2a1c4adb2f"
-dca = "0x"
+dca = "0x89b1372fa44ac2312a3876d83612d1dc9d298af332a42a153913558332a564d0"

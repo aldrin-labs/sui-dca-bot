@@ -17,7 +17,7 @@ module dca::dca {
     friend dca::flow_x;
     friend dca::turbos;
 
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
 
     // === CONSTS ===
 
@@ -38,6 +38,8 @@ module dca::dca {
     const EUnfundedAccount: u64 = 14;
     const ENoRemainingOrders: u64 = 15;
     const ETotalOrdersAboveLimit: u64 = 16;
+    const EBaseAmountCantBeZero: u64 = 18;
+    const EQuoteAmountCantBeZero: u64 = 19;
     
     // IAM errors 
     const EInvalidOwner: u64 = 20;
@@ -59,6 +61,11 @@ module dca::dca {
     struct TradePromise<phantom Input, phantom Output> has drop {
         input: u64,
         min_output: u64,
+    }
+
+    struct Price has store, copy, drop {
+        base_val: u64,
+        quote_val: u64
     }
 
     struct DCA<phantom Input, phantom Output> has key, store {
@@ -95,8 +102,8 @@ module dca::dca {
 
     // Price defined in terms of: X units of Input per 1 unit of Output
     struct TradeParams has store, copy, drop {
-        min_price: Option<u64>,
-        max_price: Option<u64>,
+        min_price: Option<Price>,
+        max_price: Option<Price>,
     }
 
     // === Events ===
@@ -186,7 +193,7 @@ module dca::dca {
     }
     
     #[lint_allow(share_owned)]
-    public entry fun init_account_with_params<Input, Output>(
+    public fun init_account_with_params<Input, Output>(
         clock: &Clock,
         delegatee: address,
         outlay: Coin<Input>,
@@ -194,8 +201,7 @@ module dca::dca {
         total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
-        min_price: u64,
-        max_price: u64,
+        trade_params: TradeParams,
         ctx: &mut TxContext,
     ) {
         let dca = new_with_params<Input, Output>(
@@ -206,8 +212,7 @@ module dca::dca {
             total_orders,
             time_scale,
             gas_funds,
-            min_price,
-            max_price,
+            trade_params,
             ctx,
         );
 
@@ -222,8 +227,7 @@ module dca::dca {
         total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
-        min_price: u64,
-        max_price: u64,
+        trade_params: TradeParams,
         ctx: &mut TxContext,
     ): DCA<Input, Output> {
         let dca = new<Input, Output>(
@@ -236,11 +240,29 @@ module dca::dca {
             gas_funds,
             ctx,
         );
-
-        option::fill(&mut dca.trade_params.min_price, min_price);
-        option::fill(&mut dca.trade_params.max_price, max_price);
+        
+        dca.trade_params = trade_params;
 
         dca
+    }
+
+    public fun with_price(base_val: u64, quote_val: u64): Price {
+        assert!(base_val > 0, EBaseAmountCantBeZero);
+        assert!(quote_val > 0, EQuoteAmountCantBeZero);
+        Price {
+            base_val,
+            quote_val
+        }
+    }
+    
+    public fun with_trade_params(
+        min_price: Option<Price>,
+        max_price: Option<Price>
+    ): TradeParams {
+        TradeParams {
+            min_price,
+            max_price
+        }
     }
 
 
@@ -347,11 +369,11 @@ module dca::dca {
         ctx: &mut TxContext,
     ) {
         check_version_and_upgrade(dca);
+        assert_minimum_gas_funds(coin::balance(gas_funds), new_orders);
 
         dca.remaining_orders = dca.remaining_orders + new_orders;
 
         assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
-        assert_minimum_gas_funds(coin::balance(gas_funds), dca.remaining_orders);
 
         let gas_budget = coin::into_balance(
             coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)
@@ -548,9 +570,16 @@ module dca::dca {
         div(input_amount, orders)
     }
 
-    fun compute_min_output(input_amount: u64, max_price: u64): u64 {
-        // Rounds down
-        div(input_amount, max_price)
+    fun compute_min_output(input_amount: u64, max_price: &Price): u64 {
+        div_by_price(input_amount, max_price)
+    }
+
+    fun mul_by_price(x: u64, price: &Price): u64 {
+        div(mul(x, price.base_val), price.quote_val)
+    }
+    
+    fun div_by_price(x: u64, price: &Price): u64 {
+        div(mul(x, price.quote_val), price.base_val)
     }
 
     fun set_inactive_and_reset<Input, Output>(dca: &mut DCA<Input, Output>) {
@@ -570,7 +599,7 @@ module dca::dca {
         } else {
             let max_price = option::borrow(&dca.trade_params.max_price);
 
-            let min_output = compute_min_output(input_amount, *max_price);
+            let min_output = compute_min_output(input_amount, max_price);
             min_output
         }
     }
@@ -688,7 +717,7 @@ module dca::dca {
             let max_price = borrow(&dca.trade_params.max_price);
 
             assert!(
-                input_amount <= mul(*max_price, output_amount),
+                input_amount <= mul_by_price(output_amount, max_price),
                 EAboveMaxPrice
             );
         }
@@ -772,21 +801,21 @@ module dca::dca {
     
     #[test]
     fun test_compute_min_price() {
-        assert!(compute_min_output(100000, 3) == 33333, 0);
-        assert!(compute_min_output(100000, 33) == 3030, 0);
-        assert!(compute_min_output(100000, 333) == 300, 0);
-        assert!(compute_min_output(100000, 3333) == 30, 0);
-        assert!(compute_min_output(100000, 33333) == 3, 0);
-        assert!(compute_min_output(100000, 333333) == 0, 0);
-        assert!(compute_min_output(100000, 3333333) == 0, 0);
+        assert!(compute_min_output(100000, &with_price(3, 1)) == 33333, 0);
+        assert!(compute_min_output(100000, &with_price(33, 1)) == 3030, 0);
+        assert!(compute_min_output(100000, &with_price(333, 1)) == 300, 0);
+        assert!(compute_min_output(100000, &with_price(3333, 1)) == 30, 0);
+        assert!(compute_min_output(100000, &with_price(33333, 1)) == 3, 0);
+        assert!(compute_min_output(100000, &with_price(333333, 1)) == 0, 0);
+        assert!(compute_min_output(100000, &with_price(3333333, 1)) == 0, 0);
 
         // Rounds down
-        assert!(compute_min_output(777777, 3) == 259259, 0); // 259259
-        assert!(compute_min_output(777777, 33) == 23569, 0); // 23569
-        assert!(compute_min_output(777777, 333) == 2335, 0); // 2335.666667
-        assert!(compute_min_output(777777, 3333) == 233, 0); // 233.3564356
-        assert!(compute_min_output(777777, 33333) == 23, 0); // 23.33354334
-        assert!(compute_min_output(777777, 333333) == 2, 0); // 2.333333333
-        assert!(compute_min_output(777777, 3333333) == 0, 0); // 0.233333123
+        assert!(compute_min_output(777777, &with_price(3, 1)) == 259259, 0); // 259259
+        assert!(compute_min_output(777777, &with_price(33, 1)) == 23569, 0); // 23569
+        assert!(compute_min_output(777777, &with_price(333, 1)) == 2335, 0); // 2335.666667
+        assert!(compute_min_output(777777, &with_price(3333, 1)) == 233, 0); // 233.3564356
+        assert!(compute_min_output(777777, &with_price(33333, 1)) == 23, 0); // 23.33354334
+        assert!(compute_min_output(777777, &with_price(333333, 1)) == 2, 0); // 2.333333333
+        assert!(compute_min_output(777777, &with_price(3333333, 1)) == 0, 0); // 0.233333123
     }
 }

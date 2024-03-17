@@ -1,11 +1,14 @@
 [package]
 name = "DCA"
 version = "0.0.1"
-published-at = "0x"
+published-at = "0x3ed0a2079006bdc14688b0b99129dd5fcf9ebda3042db1a58b5347b8bf542c40"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
 
-[addresses]
-dca = "0x"
+TurbosCLMM = { local = "../interfaces/turbos" }
+FlowXAMM = { local = "../interfaces/flow_x" }
+Cetus = { local = "../interfaces/cetus/cetus" }
 
+[addresses]
+dca = "0x89b1372fa44ac2312a3876d83612d1dc9d298af332a42a153913558332a564d0"

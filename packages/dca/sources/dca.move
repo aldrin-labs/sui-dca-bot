@@ -1,5 +1,5 @@
 module dca::dca {
-    // use std::debug::print;
+    use std::debug::print;
     use std::option::{Option, Self, none, is_some, borrow};
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{TxContext, sender};
@@ -724,7 +724,19 @@ module dca::dca {
     }
 
     public(friend) fun fee_amount(amount: u64): u64 {
-        div(mul(amount, BASE_FEES_BPS), 10_000)
+        amount - net_allocation(amount)
+    }
+    
+    public(friend) fun net_allocation(amount: u64): u64 {
+        if (amount >= 1_844_674_407_370_955) {
+            // Reduce overflow risk
+            // Downscale first then upscale
+            mul(div(amount, 10_000), 10_000 - BASE_FEES_BPS)
+        } else {
+            // Increase precision
+            // Upscale first then downscale
+            div(mul(amount, 10_000 - BASE_FEES_BPS), 10_000)
+        }
     }
 
     public(friend) fun funds_net_of_fees(amount: u64): u64 {
@@ -817,5 +829,44 @@ module dca::dca {
         assert!(compute_min_output(777777, &with_price(33333, 1)) == 23, 0); // 23.33354334
         assert!(compute_min_output(777777, &with_price(333333, 1)) == 2, 0); // 2.333333333
         assert!(compute_min_output(777777, &with_price(3333333, 1)) == 0, 0); // 0.233333123
+    }
+    
+    #[test]
+    fun test_fee_amount() {
+        // print(&fee_amount(1_333_333));
+        assert!(fee_amount(1_333_333) == 667, 0);
+        assert!(fee_amount(133_333) == 67, 0);
+        assert!(fee_amount(13_333) == 7, 0);
+
+        assert!(fee_amount(31_415_926_536) == 15707964, 0); // (Pi)
+        assert!(fee_amount(27_182_818_285) == 13591410, 0); // e (Euler's Number)
+        assert!(fee_amount(14_142_135_624) == 7071068, 0); // (Square Root of 2)
+        assert!(fee_amount(17_320_508_076) == 8660255, 0); // (Square Root of 3)
+        assert!(fee_amount(16_180_339_887) == 8090170, 0); // Golden Ratio
+        assert!(fee_amount(22_360_679_775) == 11180340, 0); // (Square Root of 5)
+        assert!(fee_amount(26_457_513_111) == 13228757, 0); // (Square Root of 7)
+        assert!(fee_amount(33_166_247_904) == 16583124, 0); // (Square Root of 11)
+        assert!(fee_amount(36_055_512_755) == 18027757, 0); // (Square Root of 13)
+        assert!(fee_amount(41_231_056_256) == 20615529, 0); // (Square Root of 17)
+        assert!(fee_amount(43_588_989_435) == 21794495, 0); // (Square Root of 19)
+        assert!(fee_amount(47_958_315_233) == 23979158, 0); // (Square Root of 23)
+        assert!(fee_amount(53_851_648_071) == 26925825, 0); // (Square Root of 29)
+        assert!(fee_amount(55_677_643_628) == 27838822, 0); // (Square Root of 31)
+        assert!(fee_amount(60_827_625_303) == 30413813, 0); // (Square Root of 37)
+        assert!(fee_amount(98_696_044_011) == 49348023, 0); // pi^2
+        assert!(fee_amount(26_651_441_427) == 13325721, 0); // 2^sqrt(2) (Gelfond-Schneider Constant)
+        assert!(fee_amount(231_406_926_328) == 115703464, 0); // e^pi  (Gelfond's Constant)
+        assert!(fee_amount(6_931_471_806) == 3465736, 0); // ln(2) (Natural Logarithm of 2)
+        assert!(fee_amount(10_986_122_887) == 5493062, 0); // ln(3) (Natural Logarithm of 3)
+        assert!(fee_amount(5_859_874_482) == 2929938, 0); // pi+e
+        assert!(fee_amount(4_233_108_251) == 2116555, 0); // pi-e
+        assert!(fee_amount(44_428_829_382) == 22214415, 0); // pi.sqrt(2)
+        assert!(fee_amount(38_442_310_282) == 19221156, 0); // esqrt(2)
+        assert!(fee_amount(491_737_432) == 245869, 0); // phi^e
+        assert!(fee_amount(17_724_538_509) == 8862270, 0); // sqrt(pi)
+        assert!(fee_amount(41_132_503_788) == 20566252, 0); // e^(sqrt(2))
+        assert!(fee_amount(29_706_864_236) == 14853433, 0); // sqrt(2)^pi
+        assert!(fee_amount(22_214_414_691) == 11107208, 0); // pi/sqrt(2)
+        assert!(fee_amount(19_221_155_141) == 9610578, 0); // e/sqrt(2)
     }
 }

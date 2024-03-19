@@ -82,7 +82,7 @@ module dca::test_utils {
 
         assert!(coin::value(&gas_refund) == dummy_gas_cost, 0);
         assert!(coin::value(&output_funds) == output_amount, 0);
-        assert!(coin::value(&fees_generated) == dca::fee_amount(input_funds_amount), 0);
+        assert!(coin::value(&fees_generated) == dca::fee_amount_(input_funds_amount), 0);
         assert!(remaining_orders_before - 1 == dca::remaining_orders(dca), 0);
         assert!(balance::value(dca::input_balance(dca)) == initial_input_balance - split_allocation_before, 0);
         assert!(dca::last_time_ms(dca) == clock::timestamp_ms(clock), 0);

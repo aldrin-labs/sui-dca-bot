@@ -1,6 +1,6 @@
 module dca::dca {
-    use std::debug::print;
-    use std::option::{Option, Self, none, is_some, borrow};
+    // use std::debug::print;
+    use std::option::{Option, Self, none, some, is_some, borrow};
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{TxContext, sender};
     use sui::balance::{Self, Balance};
@@ -218,6 +218,50 @@ module dca::dca {
 
         transfer::share_object(dca);
     }
+
+    #[lint_allow(share_owned)]
+    public entry fun init_account_with_params_flat<Input, Output>(
+        clock: &Clock,
+        delegatee: address,
+        outlay: Coin<Input>,
+        every: u64,
+        total_orders: u64,
+        time_scale: u8,
+        gas_funds: &mut Coin<SUI>,
+        min_price_base_int: u64,
+        min_price_quote_int: u64,
+        max_price_base_int: u64,
+        max_price_quote_int: u64,
+        ctx: &mut TxContext,
+    ) {
+        let min_price = if (min_price_base_int == 0 && min_price_quote_int == 0) {
+            none()
+        } else {
+            some(with_price(min_price_base_int, min_price_quote_int))
+        };
+        
+        let max_price = if (max_price_base_int == 0 && max_price_quote_int == 0) {
+            none()
+        } else {
+            some(with_price(max_price_base_int, max_price_quote_int))
+        };
+
+        let trade_params = with_trade_params(min_price, max_price);
+
+        let dca = new_with_params<Input, Output>(
+            clock,
+            delegatee,
+            outlay,
+            every,
+            total_orders,
+            time_scale,
+            gas_funds,
+            trade_params,
+            ctx,
+        );
+
+        transfer::share_object(dca);
+    }
     
     public fun new_with_params<Input, Output>(
         clock: &Clock,
@@ -295,7 +339,7 @@ module dca::dca {
 
         // Compute and transfer fees to delegatee
         
-        let fee_amount = fee_amount(dca.split_allocation);
+        let fee_amount = fee_amount_(dca.split_allocation);
         let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
         transfer::public_transfer(fees, dca.delegatee);
 
@@ -549,6 +593,40 @@ module dca::dca {
     public fun order_limit(): u64 { ORDER_LIMIT }
     public fun minimum_funding_per_trade(): u64 { MINIMUM_FUNDING_PER_TRADE }
 
+    public fun gross_trade_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        if (dca.remaining_orders > 1) {
+            dca.split_allocation
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            balance::value(&dca.input_balance)
+        }
+    }
+
+    public fun net_trade_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        let gross_amount: u64;
+        if (dca.remaining_orders > 1) {
+            gross_amount = dca.split_allocation;
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            gross_amount = balance::value(&dca.input_balance)
+        };
+
+        net_trade_amount_(gross_amount)
+    }
+
+    public fun fee_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        let gross_amount = gross_trade_amount(dca);
+
+        fee_amount_(gross_amount)
+    }
+
+
+    public(friend) fun funds_net_of_fees(amount: u64): u64 {
+        amount - fee_amount_(amount)
+    }
+
     // === Private Functions ===
 
     fun recompute_split_allocation<Input, Output>(dca: &mut DCA<Input, Output>) {
@@ -723,24 +801,20 @@ module dca::dca {
         }
     }
 
-    public(friend) fun fee_amount(amount: u64): u64 {
-        amount - net_allocation(amount)
+    public(friend) fun fee_amount_(gross_amount: u64): u64 {
+        gross_amount - net_trade_amount_(gross_amount)
     }
     
-    public(friend) fun net_allocation(amount: u64): u64 {
-        if (amount >= 1_844_674_407_370_955) {
+    public(friend) fun net_trade_amount_(gross_amount: u64): u64 {
+        if (gross_amount >= 1_844_674_407_370_955) {
             // Reduce overflow risk
             // Downscale first then upscale
-            mul(div(amount, 10_000), 10_000 - BASE_FEES_BPS)
+            mul(div(gross_amount, 10_000), 10_000 - BASE_FEES_BPS)
         } else {
             // Increase precision
             // Upscale first then downscale
-            div(mul(amount, 10_000 - BASE_FEES_BPS), 10_000)
+            div(mul(gross_amount, 10_000 - BASE_FEES_BPS), 10_000)
         }
-    }
-
-    public(friend) fun funds_net_of_fees(amount: u64): u64 {
-        amount - fee_amount(amount)
     }
 
     // === Versioning ===
@@ -833,40 +907,40 @@ module dca::dca {
     
     #[test]
     fun test_fee_amount() {
-        // print(&fee_amount(1_333_333));
-        assert!(fee_amount(1_333_333) == 667, 0);
-        assert!(fee_amount(133_333) == 67, 0);
-        assert!(fee_amount(13_333) == 7, 0);
+        // print(&fee_amount_(1_333_333));
+        assert!(fee_amount_(1_333_333) == 667, 0);
+        assert!(fee_amount_(133_333) == 67, 0);
+        assert!(fee_amount_(13_333) == 7, 0);
 
-        assert!(fee_amount(31_415_926_536) == 15707964, 0); // (Pi)
-        assert!(fee_amount(27_182_818_285) == 13591410, 0); // e (Euler's Number)
-        assert!(fee_amount(14_142_135_624) == 7071068, 0); // (Square Root of 2)
-        assert!(fee_amount(17_320_508_076) == 8660255, 0); // (Square Root of 3)
-        assert!(fee_amount(16_180_339_887) == 8090170, 0); // Golden Ratio
-        assert!(fee_amount(22_360_679_775) == 11180340, 0); // (Square Root of 5)
-        assert!(fee_amount(26_457_513_111) == 13228757, 0); // (Square Root of 7)
-        assert!(fee_amount(33_166_247_904) == 16583124, 0); // (Square Root of 11)
-        assert!(fee_amount(36_055_512_755) == 18027757, 0); // (Square Root of 13)
-        assert!(fee_amount(41_231_056_256) == 20615529, 0); // (Square Root of 17)
-        assert!(fee_amount(43_588_989_435) == 21794495, 0); // (Square Root of 19)
-        assert!(fee_amount(47_958_315_233) == 23979158, 0); // (Square Root of 23)
-        assert!(fee_amount(53_851_648_071) == 26925825, 0); // (Square Root of 29)
-        assert!(fee_amount(55_677_643_628) == 27838822, 0); // (Square Root of 31)
-        assert!(fee_amount(60_827_625_303) == 30413813, 0); // (Square Root of 37)
-        assert!(fee_amount(98_696_044_011) == 49348023, 0); // pi^2
-        assert!(fee_amount(26_651_441_427) == 13325721, 0); // 2^sqrt(2) (Gelfond-Schneider Constant)
-        assert!(fee_amount(231_406_926_328) == 115703464, 0); // e^pi  (Gelfond's Constant)
-        assert!(fee_amount(6_931_471_806) == 3465736, 0); // ln(2) (Natural Logarithm of 2)
-        assert!(fee_amount(10_986_122_887) == 5493062, 0); // ln(3) (Natural Logarithm of 3)
-        assert!(fee_amount(5_859_874_482) == 2929938, 0); // pi+e
-        assert!(fee_amount(4_233_108_251) == 2116555, 0); // pi-e
-        assert!(fee_amount(44_428_829_382) == 22214415, 0); // pi.sqrt(2)
-        assert!(fee_amount(38_442_310_282) == 19221156, 0); // esqrt(2)
-        assert!(fee_amount(491_737_432) == 245869, 0); // phi^e
-        assert!(fee_amount(17_724_538_509) == 8862270, 0); // sqrt(pi)
-        assert!(fee_amount(41_132_503_788) == 20566252, 0); // e^(sqrt(2))
-        assert!(fee_amount(29_706_864_236) == 14853433, 0); // sqrt(2)^pi
-        assert!(fee_amount(22_214_414_691) == 11107208, 0); // pi/sqrt(2)
-        assert!(fee_amount(19_221_155_141) == 9610578, 0); // e/sqrt(2)
+        assert!(fee_amount_(31_415_926_536) == 15707964, 0); // (Pi)
+        assert!(fee_amount_(27_182_818_285) == 13591410, 0); // e (Euler's Number)
+        assert!(fee_amount_(14_142_135_624) == 7071068, 0); // (Square Root of 2)
+        assert!(fee_amount_(17_320_508_076) == 8660255, 0); // (Square Root of 3)
+        assert!(fee_amount_(16_180_339_887) == 8090170, 0); // Golden Ratio
+        assert!(fee_amount_(22_360_679_775) == 11180340, 0); // (Square Root of 5)
+        assert!(fee_amount_(26_457_513_111) == 13228757, 0); // (Square Root of 7)
+        assert!(fee_amount_(33_166_247_904) == 16583124, 0); // (Square Root of 11)
+        assert!(fee_amount_(36_055_512_755) == 18027757, 0); // (Square Root of 13)
+        assert!(fee_amount_(41_231_056_256) == 20615529, 0); // (Square Root of 17)
+        assert!(fee_amount_(43_588_989_435) == 21794495, 0); // (Square Root of 19)
+        assert!(fee_amount_(47_958_315_233) == 23979158, 0); // (Square Root of 23)
+        assert!(fee_amount_(53_851_648_071) == 26925825, 0); // (Square Root of 29)
+        assert!(fee_amount_(55_677_643_628) == 27838822, 0); // (Square Root of 31)
+        assert!(fee_amount_(60_827_625_303) == 30413813, 0); // (Square Root of 37)
+        assert!(fee_amount_(98_696_044_011) == 49348023, 0); // pi^2
+        assert!(fee_amount_(26_651_441_427) == 13325721, 0); // 2^sqrt(2) (Gelfond-Schneider Constant)
+        assert!(fee_amount_(231_406_926_328) == 115703464, 0); // e^pi  (Gelfond's Constant)
+        assert!(fee_amount_(6_931_471_806) == 3465736, 0); // ln(2) (Natural Logarithm of 2)
+        assert!(fee_amount_(10_986_122_887) == 5493062, 0); // ln(3) (Natural Logarithm of 3)
+        assert!(fee_amount_(5_859_874_482) == 2929938, 0); // pi+e
+        assert!(fee_amount_(4_233_108_251) == 2116555, 0); // pi-e
+        assert!(fee_amount_(44_428_829_382) == 22214415, 0); // pi.sqrt(2)
+        assert!(fee_amount_(38_442_310_282) == 19221156, 0); // esqrt(2)
+        assert!(fee_amount_(491_737_432) == 245869, 0); // phi^e
+        assert!(fee_amount_(17_724_538_509) == 8862270, 0); // sqrt(pi)
+        assert!(fee_amount_(41_132_503_788) == 20566252, 0); // e^(sqrt(2))
+        assert!(fee_amount_(29_706_864_236) == 14853433, 0); // sqrt(2)^pi
+        assert!(fee_amount_(22_214_414_691) == 11107208, 0); // pi/sqrt(2)
+        assert!(fee_amount_(19_221_155_141) == 9610578, 0); // e/sqrt(2)
     }
 }

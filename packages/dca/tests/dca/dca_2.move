@@ -135,7 +135,7 @@ module dca::dca_tests_2 {
 
         clock::set_for_testing(&mut clock, 1706745600);
         
-        let min_sui_amount = dca::funds_net_of_fees(50_000); // 100_000 USDC / 2 (price)
+        let min_sui_amount = dca::net_trade_amount_(50_000); // 100_000 USDC / 2 (price)
 
         swap_ab(
             min_sui_amount,
@@ -188,7 +188,7 @@ module dca::dca_tests_2 {
 
         clock::set_for_testing(&mut clock, 1706745600);
 
-        let min_sui_amount = dca::funds_net_of_fees(200_000); // 100_000 USDC --> 0.5 (price)
+        let min_sui_amount = dca::net_trade_amount_(200_000); // 100_000 USDC --> 0.5 (price)
 
         swap_ab(
             min_sui_amount,
@@ -242,7 +242,7 @@ module dca::dca_tests_2 {
 
         clock::set_for_testing(&mut clock, 1706745600);
 
-        let min_sui_amount = dca::funds_net_of_fees(50_000); // 100_000 USDC / 2 (price)
+        let min_sui_amount = dca::net_trade_amount_(50_000); // 100_000 USDC / 2 (price)
 
         swap_ab(
             min_sui_amount - 1,
@@ -295,7 +295,7 @@ module dca::dca_tests_2 {
 
         clock::set_for_testing(&mut clock, 1706745600);
 
-        let min_sui_amount = dca::funds_net_of_fees(200_000); // 100_000 USDC / 0.5 (price)
+        let min_sui_amount = dca::net_trade_amount_(200_000); // 100_000 USDC / 0.5 (price)
 
         swap_ab(
             min_sui_amount - 1,

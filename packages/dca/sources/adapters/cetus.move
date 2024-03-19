@@ -34,6 +34,7 @@ module dca::cetus {
         sqrt_price_limit: u128,
         arg_8: bool,
         clock: &Clock,
+        output_threshold: u64,
         dca: &mut DCA<A, B>,
         gas_cost: u64,
         ctx: &mut TxContext
@@ -61,6 +62,7 @@ module dca::cetus {
             ctx
         );
 
+        check_coin_threshold(&coin_b, output_threshold);
         dca::assert_max_price_via_output(coin::value(&coin_b), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
@@ -83,6 +85,7 @@ module dca::cetus {
         sqrt_price_limit: u128,
         arg_8: bool,
         clock: &Clock,
+        output_threshold: u64,
         dca: &mut DCA<B, A>,
         gas_cost: u64,
         ctx: &mut TxContext
@@ -110,6 +113,7 @@ module dca::cetus {
             ctx
         );
 
+        check_coin_threshold(&coin_a, output_threshold);
         dca::assert_max_price_via_output(coin::value(&coin_a), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
@@ -132,6 +136,7 @@ module dca::cetus {
         sqrt_price_limit_1: u128,
         clock: &Clock,
         dca: &mut DCA<A, C>,
+        output_threshold: u64,
         gas_cost: u64,
         ctx: &mut TxContext
     ) {
@@ -158,6 +163,7 @@ module dca::cetus {
             ctx
         );
 
+        check_coin_threshold(&coin_c, output_threshold);
         dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
@@ -179,6 +185,7 @@ module dca::cetus {
         sqrt_price_limit_0: u128,
         sqrt_price_limit_1: u128,
         clock: &Clock,
+        output_threshold: u64,
         dca: &mut DCA<A, C>,
         gas_cost: u64,
         ctx: &mut TxContext
@@ -206,6 +213,7 @@ module dca::cetus {
             ctx
         );
 
+        check_coin_threshold(&coin_c, output_threshold);
         dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
@@ -227,6 +235,7 @@ module dca::cetus {
         sqrt_price_limit_0: u128,
         sqrt_price_limit_1: u128,
         clock: &Clock,
+        output_threshold: u64,
         dca: &mut DCA<A, C>,
         gas_cost: u64,
         ctx: &mut TxContext
@@ -254,6 +263,7 @@ module dca::cetus {
             ctx
         );
 
+        check_coin_threshold(&coin_c, output_threshold);
         dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));
@@ -275,6 +285,7 @@ module dca::cetus {
         sqrt_price_limit_0: u128,
         sqrt_price_limit_1: u128,
         clock: &Clock,
+        output_threshold: u64,
         dca: &mut DCA<A, C>,
         gas_cost: u64,
         ctx: &mut TxContext
@@ -302,6 +313,7 @@ module dca::cetus {
             ctx
         );
 
+        check_coin_threshold(&coin_c, output_threshold);
         dca::assert_max_price_via_output(coin::value(&coin_c), &promise);
 
         transfer::public_transfer(coin_a, dca::owner(dca));

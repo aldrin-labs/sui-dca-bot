@@ -1,19 +1,24 @@
 module dca::dca {
-    use std::option::{Option, Self, none, is_some};
+    // use std::debug::print;
+    use std::option::{Option, Self, none, some, is_some, borrow};
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{TxContext, sender};
     use sui::balance::{Self, Balance};
     use sui::clock::{Self, Clock};
-    use sui::dynamic_field as df;
     use sui::transfer;
     use sui::coin::{Coin, Self};
     use sui::event;
     use sui::sui::SUI;
 
-    use dca::proof::{Self, TradeProof};
     use dca::time;
     use dca::math::{mul, div};
-    use dca::protocol_list::{Self, ProtocolList};
+
+    friend dca::cetus;
+    friend dca::cetus2;
+    friend dca::flow_x;
+    friend dca::turbos;
+
+    const VERSION: u64 = 2;
 
     // === CONSTS ===
 
@@ -22,39 +27,51 @@ module dca::dca {
     const ORDER_LIMIT: u64 = 25_000;
     const MINIMUM_FUNDING_PER_TRADE: u64 = 100_000;
 
-    // === Error Codes ===
+    // === Error Codes === 
     
-    const EInvalidTimeScale: u64 = 1;
-    const EInvalidEvery: u64 = 2;
-    const EInvalidOwner: u64 = 3;
-    const EInvalidDelegatee: u64 = 4;
-    const EInvalidAuthority: u64 = 5;
-    const EInsufficientInputBalance: u64 = 6;
-    const EInsufficientOutputBalance: u64 = 7;
-    const ENotEnoughTimePassed: u64 = 8;
-    const ENoRemainingOrders: u64 = 9;
-    const EBelowMinPrice: u64 = 10;
-    const EAboveMaxPrice: u64 = 11;
-    const EInactive: u64 = 12;
-    const EUnfundedAccount: u64 = 13;
-    const ETotalOrdersAboveLimit: u64 = 14;
-    const EBelowMinimumFunding: u64 = 15;
+    const EWrongVersion: u64 = 0;
+    
+    // Init/activate errors
+    const EInvalidTimeScale: u64 = 10;
+    const EInvalidEvery: u64 = 11;
+    const EBelowMinimumFunding: u64 = 12;
+    const EInsufficientGasProvision: u64 = 13;
+    const EUnfundedAccount: u64 = 14;
+    const ENoRemainingOrders: u64 = 15;
+    const ETotalOrdersAboveLimit: u64 = 16;
+    const EBaseAmountCantBeZero: u64 = 18;
+    const EQuoteAmountCantBeZero: u64 = 19;
+    
+    // IAM errors 
+    const EInvalidOwner: u64 = 20;
+    const EInvalidDelegatee: u64 = 21;
+    const EInvalidAuthority: u64 = 22;
+
+    // Trading/Withdraw errors
+    const ENotEnoughTimePassed: u64 = 30;
+    const EInactive: u64 = 31;
+    #[allow(unused_const)]
+    const EBelowMinPrice: u64 = 32;
+    const EAboveMaxPrice: u64 = 33;
+    const EInsufficientInputBalance: u64 = 34; // Withdraw error
 
     // === Structs ===
 
     struct ProofKey has copy, store, drop {}
 
-    struct TradePromise<phantom Input, phantom Output> {
-        trader: address,
+    struct TradePromise<phantom Input, phantom Output> has drop {
         input: u64,
-        min_price: Option<u64>,
-        max_price: Option<u64>,
-        output: Option<Coin<Output>>,
-        dfs: UID,
+        min_output: u64,
+    }
+
+    struct Price has store, copy, drop {
+        base_val: u64,
+        quote_val: u64
     }
 
     struct DCA<phantom Input, phantom Output> has key, store {
         id: UID,
+        version: u64,
         /// The original owner of the funds
         owner: address,
         /// Address of the delagatee that can periodically withdraw the funds
@@ -84,9 +101,10 @@ module dca::dca {
         gas_budget: Balance<SUI>,
     }
 
+    // Price defined in terms of: X units of Input per 1 unit of Output
     struct TradeParams has store, copy, drop {
-        min_price: Option<u64>,
-        max_price: Option<u64>,
+        min_price: Option<Price>,
+        max_price: Option<Price>,
     }
 
     // === Events ===
@@ -97,28 +115,6 @@ module dca::dca {
         delegatee: address,
     }
 
-    public fun add_trade_proof<Wit: drop, Input, Output>(
-        wit: Wit,
-        promise: &mut TradePromise<Input, Output>,
-        input: u64,
-        output: u64
-    ) {
-        df::add(&mut promise.dfs, ProofKey {}, proof::create<Wit, Input, Output>(wit, input, output))
-    }
-    
-    public fun add_trade_proof_with_coin<Wit: drop, Input, Output>(
-        wit: Wit,
-        promise: &mut TradePromise<Input, Output>,
-        input: u64,
-        output: Coin<Output>,
-    ) {
-        let output_amount = coin::value(&output);
-        option::fill(&mut promise.output, output);
-
-        df::add(&mut promise.dfs, ProofKey {}, proof::create<Wit, Input, Output>(wit, input, output_amount))
-    }
-
-
     // === Constructor Functions ===
 
     #[lint_allow(share_owned)]
@@ -127,7 +123,7 @@ module dca::dca {
         delegatee: address,
         input_funds: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
@@ -137,7 +133,7 @@ module dca::dca {
             delegatee,
             input_funds,
             every,
-            future_orders,
+            total_orders,
             time_scale,
             gas_funds,
             ctx,
@@ -151,21 +147,22 @@ module dca::dca {
         delegatee: address,
         input_funds: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
     ): DCA<Input, Output> {
         assert_time_scale(time_scale);
         assert_every(every, time_scale);
-        assert_how_many_orders(future_orders, every, time_scale);
-        assert_minimum_funding_per_trade(future_orders, coin::value(&input_funds));
+        assert_how_many_orders(total_orders, every, time_scale);
+        assert_minimum_funding_per_trade(coin::balance(&input_funds), total_orders);
+        assert_minimum_gas_funds(coin::balance(gas_funds), total_orders);
 
         let input_funds = coin::into_balance(input_funds);
 
         let current_time = clock::timestamp_ms(clock);
         // At init-time we set split_allocation = outlay / total_orders
-        let split_allocation = div(balance::value(&input_funds), future_orders);
+        let split_allocation = compute_split_allocation(balance::value(&input_funds), total_orders);
 
         let dca_uid = object::new(ctx);
         let owner = sender(ctx);
@@ -176,16 +173,17 @@ module dca::dca {
             delegatee
         });
 
-        let gas_budget = coin::into_balance(coin::split(gas_funds, gas_budget_estimate(future_orders), ctx));
+        let gas_budget = coin::into_balance(coin::split(gas_funds, gas_budget_estimate(total_orders), ctx));
 
         DCA {
             id: dca_uid,
+            version: VERSION,
             owner,
             delegatee,
             start_time_ms: current_time,
             last_time_ms: current_time,
             every,
-            remaining_orders: future_orders,
+            remaining_orders: total_orders,
             time_scale,
             input_balance: input_funds,
             split_allocation,
@@ -196,16 +194,15 @@ module dca::dca {
     }
     
     #[lint_allow(share_owned)]
-    public entry fun init_account_with_params<Input, Output>(
+    public fun init_account_with_params<Input, Output>(
         clock: &Clock,
         delegatee: address,
         outlay: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
-        min_price: u64,
-        max_price: u64,
+        trade_params: TradeParams,
         ctx: &mut TxContext,
     ) {
         let dca = new_with_params<Input, Output>(
@@ -213,11 +210,54 @@ module dca::dca {
             delegatee,
             outlay,
             every,
-            future_orders,
+            total_orders,
             time_scale,
             gas_funds,
-            min_price,
-            max_price,
+            trade_params,
+            ctx,
+        );
+
+        transfer::share_object(dca);
+    }
+
+    #[lint_allow(share_owned)]
+    public entry fun init_account_with_params_flat<Input, Output>(
+        clock: &Clock,
+        delegatee: address,
+        outlay: Coin<Input>,
+        every: u64,
+        total_orders: u64,
+        time_scale: u8,
+        gas_funds: &mut Coin<SUI>,
+        min_price_base_int: u64,
+        min_price_quote_int: u64,
+        max_price_base_int: u64,
+        max_price_quote_int: u64,
+        ctx: &mut TxContext,
+    ) {
+        let min_price = if (min_price_base_int == 0 && min_price_quote_int == 0) {
+            none()
+        } else {
+            some(with_price(min_price_base_int, min_price_quote_int))
+        };
+        
+        let max_price = if (max_price_base_int == 0 && max_price_quote_int == 0) {
+            none()
+        } else {
+            some(with_price(max_price_base_int, max_price_quote_int))
+        };
+
+        let trade_params = with_trade_params(min_price, max_price);
+
+        let dca = new_with_params<Input, Output>(
+            clock,
+            delegatee,
+            outlay,
+            every,
+            total_orders,
+            time_scale,
+            gas_funds,
+            trade_params,
             ctx,
         );
 
@@ -229,11 +269,10 @@ module dca::dca {
         delegatee: address,
         outlay: Coin<Input>,
         every: u64,
-        future_orders: u64,
+        total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
-        min_price: u64,
-        max_price: u64,
+        trade_params: TradeParams,
         ctx: &mut TxContext,
     ): DCA<Input, Output> {
         let dca = new<Input, Output>(
@@ -241,26 +280,45 @@ module dca::dca {
             delegatee,
             outlay,
             every,
-            future_orders,
+            total_orders,
             time_scale,
             gas_funds,
             ctx,
         );
-
-        option::fill(&mut dca.trade_params.min_price, min_price);
-        option::fill(&mut dca.trade_params.max_price, max_price);
+        
+        dca.trade_params = trade_params;
 
         dca
+    }
+
+    public fun with_price(base_val: u64, quote_val: u64): Price {
+        assert!(base_val > 0, EBaseAmountCantBeZero);
+        assert!(quote_val > 0, EQuoteAmountCantBeZero);
+        Price {
+            base_val,
+            quote_val
+        }
+    }
+    
+    public fun with_trade_params(
+        min_price: Option<Price>,
+        max_price: Option<Price>
+    ): TradeParams {
+        TradeParams {
+            min_price,
+            max_price
+        }
     }
 
 
     // === Trade Functions ===
     
-    public fun init_trade<Input, Output>(
+    public(friend) fun init_trade<Input, Output>(
         dca: &mut DCA<Input, Output>,
         clock: &Clock,
         ctx: &mut TxContext,
-    ): (Coin<Input>, TradePromise<Input, Output>) {
+    ): (Balance<Input>, TradePromise<Input, Output>) {
+        check_version_and_upgrade(dca);
         assert_delegatee(dca, ctx);
         assert_active(dca);
 
@@ -269,76 +327,47 @@ module dca::dca {
         assert_time(current_time, dca.last_time_ms, dca.every, dca.time_scale);
 
         // Pop funds, update last_time_ts, and update remaining orders
-        let input_funds = balance::split(&mut dca.input_balance, dca.split_allocation);
+        let input_funds = if (dca.remaining_orders > 1) {
+            balance::split(&mut dca.input_balance, dca.split_allocation)
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            balance::withdraw_all(&mut dca.input_balance)
+        };
+
         dca.last_time_ms = clock::timestamp_ms(clock);
         dca.remaining_orders = dca.remaining_orders - 1;
 
-        // Comput and transfer fees to delegatee
-        let fee_amount = div(mul(dca.split_allocation, BASE_FEES_BPS), 10_000);
+        // Compute and transfer fees to delegatee
+        
+        let fee_amount = fee_amount_(dca.split_allocation);
         let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
         transfer::public_transfer(fees, dca.delegatee);
 
+        let input = balance::value(&input_funds);
+
         let promise = TradePromise<Input, Output> {
-            trader: dca.owner,
-            input: balance::value(&input_funds),
-            min_price: dca.trade_params.min_price,
-            max_price: dca.trade_params.max_price,
-            output: none(),
-            dfs: object::new(ctx)
+            input,
+            min_output: get_min_output_amount(dca, input),
         };
         
-        (coin::from_balance(input_funds, ctx), promise)
+        (input_funds, promise)
     }
     
-    public fun resolve_trade<Input, Output, Protocol: drop>(
+    public(friend) fun resolve_trade<Input, Output>(
         dca: &mut DCA<Input, Output>,
         promise: TradePromise<Input, Output>,
-        protocol_list: &ProtocolList,
         gas_cost: u64,
         ctx: &mut TxContext,
     ): Coin<SUI> {
-        // TODO: Tradepromise must have address
-        let TradePromise { trader, input, min_price, max_price, output, dfs } = promise;
+        // No need to assert version as its already checked in the
+        // `init_trade` function
 
-        // Fails if proof does not exist or is of wrong type
-        let proof: &TradeProof<Protocol, Input, Output> = df::borrow(&dfs, ProofKey {});
-
-        protocol_list::proove<Protocol>(protocol_list);
-        
-        // Checks that input amount corresponds
-        assert!(input == dca.split_allocation, 0);
-
-        // Assert that promise is from the corresponding user
-        assert!(trader == dca.owner, 0);
-
-        // Transfers output to owner if any
-        if (is_some(&output)) {
-            let out = option::extract(&mut output);
-
-            transfer::public_transfer(out, dca.owner);
-        };
-
-        option::destroy_none(output);
-
-        assert_delegatee(dca, ctx);
-        assert_active(dca);
-
-        // TODO: Numerical Precision && Overflow
-        let min_execution_price = proof::min_price<Protocol, Input, Output>(proof);
-
-        if (is_some(&min_price)) {
-            assert!(min_execution_price >= *option::borrow(&min_price), EBelowMinPrice);
-        };
-        
-        if (is_some(&max_price)) {
-            assert!(min_execution_price <= *option::borrow(&max_price), EAboveMaxPrice);
-        };
-
-        object::delete(dfs);
+        let TradePromise { input: _, min_output: _ } = promise;
 
         // If no more trades to make, set DCA to inactive
         if (dca.remaining_orders == 0 || balance::value(&dca.input_balance) == 0) {
-            set_inactive(dca);
+            set_inactive_and_reset(dca);
         };
         
         coin::from_balance(
@@ -355,8 +384,10 @@ module dca::dca {
         gas_funds: &mut Coin<SUI>,
         ctx: &mut TxContext,
     ) {
+        check_version_and_upgrade(dca);
         assert_owner(dca, ctx);
-        assert_minimum_funding_per_trade(new_orders, coin::value(&input_funds));
+        assert_minimum_funding_per_trade(coin::balance(&input_funds), new_orders);
+        assert_minimum_gas_funds(coin::balance(gas_funds), new_orders);
         dca.active = true;
 
         let funds = coin::into_balance(input_funds);
@@ -382,9 +413,12 @@ module dca::dca {
         new_orders: u64,
         ctx: &mut TxContext,
     ) {
+        check_version_and_upgrade(dca);
+        assert_minimum_gas_funds(coin::balance(gas_funds), new_orders);
+
         dca.remaining_orders = dca.remaining_orders + new_orders;
 
-        assert_minimum_funding_per_trade(dca.remaining_orders, balance::value(&dca.input_balance));
+        assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
 
         let gas_budget = coin::into_balance(
             coin::split(gas_funds, gas_budget_estimate(new_orders), ctx)
@@ -417,6 +451,7 @@ module dca::dca {
         decrease_orders: u64,
         ctx: &TxContext,
     ): (Balance<Input>, Balance<SUI>) {
+        check_version_and_upgrade(dca);
         assert_owner(dca, ctx);
         assert_input_balance(&dca.input_balance, amount);
 
@@ -429,7 +464,7 @@ module dca::dca {
         
         // Recompute split_allocation
         recompute_split_allocation(dca);
-        assert_minimum_funding_per_trade(dca.remaining_orders, balance::value(&dca.input_balance));
+        assert_minimum_funding_per_trade(&dca.input_balance, dca.remaining_orders);
 
         // Return funds
         (funds, gas_budget)
@@ -439,6 +474,7 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         gas_funds: Coin<SUI>,
     ) {
+        check_version_and_upgrade(dca);
         let gas_budget = coin::into_balance(gas_funds);
         balance::join(&mut dca.gas_budget, gas_budget);
     }
@@ -450,10 +486,14 @@ module dca::dca {
         dca: DCA<Input, Output>,
         ctx: &mut TxContext,
     ) {
+        check_version_and_upgrade(&mut dca);
+        assert_owner_or_delegatee(&dca, ctx);
+
         let DCA {
             id,
+            version: _,
             owner,
-            delegatee,
+            delegatee: _,
             start_time_ms: _,
             last_time_ms: _,
             every: _,
@@ -466,32 +506,53 @@ module dca::dca {
             gas_budget,
         } = dca;
 
-        let sender = sender(ctx);
-
-        assert!((sender == owner) || (sender == delegatee), EInvalidAuthority);
-
         if (balance::value(&input_balance) > 0) {
             let input_funds = coin::from_balance(input_balance, ctx);
             transfer::public_transfer(input_funds, owner);
         } else {
             balance::destroy_zero(input_balance);
         };
-
-        transfer::public_transfer(
-            coin::from_balance(gas_budget, ctx),
-            owner            
-        );
+        
+        if (balance::value(&gas_budget) > 0) {
+            let input_funds = coin::from_balance(gas_budget, ctx);
+            transfer::public_transfer(input_funds, owner);
+        } else {
+            balance::destroy_zero(gas_budget);
+        };
 
         object::delete(id);
+    }
+    
+    public fun redeem_funds_and_deactivate<Input, Output>(
+        dca: &mut DCA<Input, Output>,
+        ctx: &mut TxContext,
+    ) {
+        check_version_and_upgrade(dca);
+        assert_owner_or_delegatee(dca, ctx);
+
+        if (balance::value(&dca.input_balance) > 0) {
+            let input_balance = balance::withdraw_all(&mut dca.input_balance);
+            let input_funds = coin::from_balance(input_balance, ctx);
+            transfer::public_transfer(input_funds, dca.owner);
+        };
+        
+        if (balance::value(&dca.gas_budget) > 0) {
+            let gas_budget = balance::withdraw_all(&mut dca.gas_budget);
+            let gas_budget = coin::from_balance(gas_budget, ctx);
+            transfer::public_transfer(gas_budget, dca.owner);
+        };
+
+        set_inactive_and_reset(dca);
     }
 
     // === Activity Setters ===
 
-    public entry fun set_inactive_as_delegatee<Input, Output>(
+    public entry fun set_inactive<Input, Output>(
         dca: &mut DCA<Input, Output>,
         ctx: &TxContext,
     ) {
-        assert_delegatee(dca, ctx);
+        check_version_and_upgrade(dca);
+        assert_owner_or_delegatee(dca, ctx);
 
         dca.active = false;
     }
@@ -500,6 +561,7 @@ module dca::dca {
         dca: &mut DCA<Input, Output>,
         ctx: &TxContext,
     ) {
+        check_version_and_upgrade(dca);
         assert_owner(dca, ctx);
 
         assert!(balance::value(&dca.input_balance) > 0, EUnfundedAccount);
@@ -524,10 +586,47 @@ module dca::dca {
     public fun trade_params<Input, Output>(dca: &DCA<Input, Output>): TradeParams { dca.trade_params }
     public fun active<Input, Output>(dca: &DCA<Input, Output>): bool { dca.active }
 
-    public fun trade_owner<Input, Output>(promise: &TradePromise<Input, Output>): address { promise.trader }
     public fun trade_input<Input, Output>(promise: &TradePromise<Input, Output>): u64 { promise.input }
-    public fun trade_min_price<Input, Output>(promise: &TradePromise<Input, Output>): Option<u64> { promise.min_price }
-    public fun trade_max_price<Input, Output>(promise: &TradePromise<Input, Output>): Option<u64> { promise.max_price }
+    public fun trade_min_output<Input, Output>(promise: &TradePromise<Input, Output>): u64 { promise.min_output }
+
+    public fun gas_budget_per_trade(): u64 { GAS_BUDGET_PER_TRADE }
+    public fun base_fee_bps(): u64 { BASE_FEES_BPS }
+    public fun order_limit(): u64 { ORDER_LIMIT }
+    public fun minimum_funding_per_trade(): u64 { MINIMUM_FUNDING_PER_TRADE }
+
+    public fun gross_trade_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        if (dca.remaining_orders > 1) {
+            dca.split_allocation
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            balance::value(&dca.input_balance)
+        }
+    }
+
+    public fun net_trade_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        let gross_amount: u64;
+        if (dca.remaining_orders > 1) {
+            gross_amount = dca.split_allocation;
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            gross_amount = balance::value(&dca.input_balance)
+        };
+
+        net_trade_amount_(gross_amount)
+    }
+
+    public fun fee_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        let gross_amount = gross_trade_amount(dca);
+
+        fee_amount_(gross_amount)
+    }
+
+
+    public(friend) fun funds_net_of_fees(amount: u64): u64 {
+        amount - fee_amount_(amount)
+    }
 
     // === Private Functions ===
 
@@ -535,17 +634,34 @@ module dca::dca {
         let funds = balance::value(&dca.input_balance);
 
         if (dca.remaining_orders == 0 || funds == 0) {
-            set_inactive(dca)
+            set_inactive_and_reset(dca)
         } else {
             recompute_split_allocation_unsafe(dca);
         }
     }
     
     fun recompute_split_allocation_unsafe<Input, Output>(dca: &mut DCA<Input, Output>) {
-        dca.split_allocation = div(balance::value(&dca.input_balance), dca.remaining_orders);
+        dca.split_allocation = compute_split_allocation(balance::value(&dca.input_balance), dca.remaining_orders);
     }
 
-    fun set_inactive<Input, Output>(dca: &mut DCA<Input, Output>) {
+    fun compute_split_allocation(input_amount: u64, orders: u64): u64 {
+        // Rounds down
+        div(input_amount, orders)
+    }
+
+    fun compute_min_output(input_amount: u64, max_price: &Price): u64 {
+        div_by_price(input_amount, max_price)
+    }
+
+    fun mul_by_price(x: u64, price: &Price): u64 {
+        div(mul(x, price.base_val), price.quote_val)
+    }
+    
+    fun div_by_price(x: u64, price: &Price): u64 {
+        div(mul(x, price.quote_val), price.base_val)
+    }
+
+    fun set_inactive_and_reset<Input, Output>(dca: &mut DCA<Input, Output>) {
         dca.split_allocation = 0;
         dca.remaining_orders = 0;
         dca.active = false;
@@ -553,6 +669,18 @@ module dca::dca {
 
     fun gas_budget_estimate(n_tx: u64): u64 {
         mul(GAS_BUDGET_PER_TRADE, n_tx)
+    }
+
+    fun get_min_output_amount<Input, Output>(dca: &DCA<Input, Output>, input_amount: u64): u64 {
+        if (option::is_none(&dca.trade_params.max_price)) {
+            // We return 1 for extra safety as no trade should return zero as output
+            1
+        } else {
+            let max_price = option::borrow(&dca.trade_params.max_price);
+
+            let min_output = compute_min_output(input_amount, max_price);
+            min_output
+        }
     }
 
     // === Assertions ===
@@ -585,11 +713,11 @@ module dca::dca {
             } else if (time_scale == 3) { // 3 => days
                 // Lower bound --> 1 day
                 // Upper bound --> 6 days
-                every >= 1 && every <= 6
+                every >= 1 && every <= 30
             } else if (time_scale == 4) { // 4 => weeks
                 // Lower bound --> 1 week
                 // Upper bound --> 4 weeks
-                every >= 1 && every <= 4
+                every >= 1 && every <= 52
             } else if (time_scale == 5) { // 5 => months
                 // Lower bound --> 1 month
                 // Upper bound --> 12 months
@@ -606,8 +734,14 @@ module dca::dca {
         assert!(how_many_orders <= ORDER_LIMIT, ETotalOrdersAboveLimit);
     }
     
-    fun assert_minimum_funding_per_trade(funding_amount: u64, n_tx: u64) {
+    fun assert_minimum_funding_per_trade<T>(total_funding: &Balance<T>, n_tx: u64) {
+        let funding_amount = balance::value(total_funding);
         assert!(funding_amount >= mul(n_tx, MINIMUM_FUNDING_PER_TRADE), EBelowMinimumFunding);
+    }
+    
+    fun assert_minimum_gas_funds<T>(gas_funds: &Balance<T>, n_tx: u64) {
+        let gas_amount = balance::value(gas_funds);
+        assert!(gas_amount >= gas_budget_estimate(n_tx), EInsufficientGasProvision);
     }
     
     fun assert_owner<Input, Output>(dca: &DCA<Input, Output>, ctx: &TxContext) {
@@ -616,6 +750,11 @@ module dca::dca {
     
     fun assert_delegatee<Input, Output>(dca: &DCA<Input, Output>, ctx: &TxContext) {
         assert!(dca.delegatee == sender(ctx), EInvalidDelegatee);
+    }
+    
+    fun assert_owner_or_delegatee<Input, Output>(dca: &DCA<Input, Output>, ctx: &TxContext) {
+        let sender = sender(ctx);
+        assert!((sender == dca.owner) || (sender == dca.delegatee), EInvalidAuthority);
     }
     
     fun assert_input_balance<T>(balance: &Balance<T>, withdraw_amount: u64) {
@@ -644,28 +783,73 @@ module dca::dca {
         assert!(has_time_passed == true, ENotEnoughTimePassed);
     }
 
+    public(friend) fun assert_max_price_via_output<Input, Output>(output_amount: u64, promise: &TradePromise<Input, Output>) {
+        let min_output = trade_min_output(promise);
+        assert!(
+            output_amount >= min_output,
+            EAboveMaxPrice
+        );
+    }
+    
+    public(friend) fun assert_max_price<Input, Output>(input_amount: u64, output_amount: u64, dca: &DCA<Input, Output>) {
+        if (is_some(&dca.trade_params.max_price)) {
+            let max_price = borrow(&dca.trade_params.max_price);
+
+            assert!(
+                input_amount <= mul_by_price(output_amount, max_price),
+                EAboveMaxPrice
+            );
+        }
+    }
+
+    public(friend) fun fee_amount_(gross_amount: u64): u64 {
+        gross_amount - net_trade_amount_(gross_amount)
+    }
+    
+    public(friend) fun net_trade_amount_(gross_amount: u64): u64 {
+        if (gross_amount >= 1_844_674_407_370_955) {
+            // Reduce overflow risk
+            // Downscale first then upscale
+            mul(div(gross_amount, 10_000), 10_000 - BASE_FEES_BPS)
+        } else {
+            // Increase precision
+            // Upscale first then downscale
+            div(mul(gross_amount, 10_000 - BASE_FEES_BPS), 10_000)
+        }
+    }
+
+    // === Versioning ===
+
+    fun assert_version<Input, Output>(dca: &DCA<Input, Output>) {
+        assert!(dca.version == VERSION, EWrongVersion);
+    }
+
+    fun check_version_and_upgrade<Input, Output>(dca: &mut DCA<Input, Output>) {
+        if (dca.version < VERSION) {
+            dca.version = VERSION;
+        };
+        assert_version(dca);
+    }
+
     // === Test-only functions ===
+
+    #[test_only]
+    friend dca::test_utils;
+    #[test_only]
+    friend dca::dca_tests_2;
 
     #[test_only]
     public fun destroy_promise_for_testing<Input, Output>(promise: TradePromise<Input, Output>) {
         let TradePromise {
-            trader: _, input: _, min_price: _, max_price: _, output, dfs
+            input: _, min_output: _,
         } = promise;
-
-        if (is_some(&output)) {
-            let out = option::extract(&mut output);
-
-            coin::burn_for_testing(out);
-        };
-        
-        option::destroy_none(output);
-        object::delete(dfs);
     }
     
     #[test_only]
     public fun destroy_for_testing<Input, Output>(dca: DCA<Input, Output>) {
         let DCA {
             id,
+            version: _,
             owner: _,
             delegatee: _,
             start_time_ms: _,
@@ -683,5 +867,81 @@ module dca::dca {
         object::delete(id);
         balance::destroy_for_testing(input_balance);
         balance::destroy_for_testing(gas_budget);
+    }
+
+    #[test_only]
+    public fun gas_budget_estimate_(n_tx: u64): u64 {
+        gas_budget_estimate(n_tx)
+    }
+
+    // === Tests ===
+
+    #[test]
+    fun test_gas_budget() {
+        assert!(gas_budget_estimate(3) == 75_000_000, 0);
+        assert!(gas_budget_estimate(33) == 825_000_000, 0);
+        assert!(gas_budget_estimate(333) == 8_325_000_000, 0);
+        assert!(gas_budget_estimate(3333) == 83_325_000_000, 0);
+        assert!(gas_budget_estimate(24333) == 608_325_000_000, 0);
+        assert!(gas_budget_estimate(25000) == 625_000_000_000, 0);
+    }
+    
+    #[test]
+    fun test_compute_min_price() {
+        assert!(compute_min_output(100000, &with_price(3, 1)) == 33333, 0);
+        assert!(compute_min_output(100000, &with_price(33, 1)) == 3030, 0);
+        assert!(compute_min_output(100000, &with_price(333, 1)) == 300, 0);
+        assert!(compute_min_output(100000, &with_price(3333, 1)) == 30, 0);
+        assert!(compute_min_output(100000, &with_price(33333, 1)) == 3, 0);
+        assert!(compute_min_output(100000, &with_price(333333, 1)) == 0, 0);
+        assert!(compute_min_output(100000, &with_price(3333333, 1)) == 0, 0);
+
+        // Rounds down
+        assert!(compute_min_output(777777, &with_price(3, 1)) == 259259, 0); // 259259
+        assert!(compute_min_output(777777, &with_price(33, 1)) == 23569, 0); // 23569
+        assert!(compute_min_output(777777, &with_price(333, 1)) == 2335, 0); // 2335.666667
+        assert!(compute_min_output(777777, &with_price(3333, 1)) == 233, 0); // 233.3564356
+        assert!(compute_min_output(777777, &with_price(33333, 1)) == 23, 0); // 23.33354334
+        assert!(compute_min_output(777777, &with_price(333333, 1)) == 2, 0); // 2.333333333
+        assert!(compute_min_output(777777, &with_price(3333333, 1)) == 0, 0); // 0.233333123
+    }
+    
+    #[test]
+    fun test_fee_amount() {
+        // print(&fee_amount_(1_333_333));
+        assert!(fee_amount_(1_333_333) == 667, 0);
+        assert!(fee_amount_(133_333) == 67, 0);
+        assert!(fee_amount_(13_333) == 7, 0);
+
+        assert!(fee_amount_(31_415_926_536) == 15707964, 0); // (Pi)
+        assert!(fee_amount_(27_182_818_285) == 13591410, 0); // e (Euler's Number)
+        assert!(fee_amount_(14_142_135_624) == 7071068, 0); // (Square Root of 2)
+        assert!(fee_amount_(17_320_508_076) == 8660255, 0); // (Square Root of 3)
+        assert!(fee_amount_(16_180_339_887) == 8090170, 0); // Golden Ratio
+        assert!(fee_amount_(22_360_679_775) == 11180340, 0); // (Square Root of 5)
+        assert!(fee_amount_(26_457_513_111) == 13228757, 0); // (Square Root of 7)
+        assert!(fee_amount_(33_166_247_904) == 16583124, 0); // (Square Root of 11)
+        assert!(fee_amount_(36_055_512_755) == 18027757, 0); // (Square Root of 13)
+        assert!(fee_amount_(41_231_056_256) == 20615529, 0); // (Square Root of 17)
+        assert!(fee_amount_(43_588_989_435) == 21794495, 0); // (Square Root of 19)
+        assert!(fee_amount_(47_958_315_233) == 23979158, 0); // (Square Root of 23)
+        assert!(fee_amount_(53_851_648_071) == 26925825, 0); // (Square Root of 29)
+        assert!(fee_amount_(55_677_643_628) == 27838822, 0); // (Square Root of 31)
+        assert!(fee_amount_(60_827_625_303) == 30413813, 0); // (Square Root of 37)
+        assert!(fee_amount_(98_696_044_011) == 49348023, 0); // pi^2
+        assert!(fee_amount_(26_651_441_427) == 13325721, 0); // 2^sqrt(2) (Gelfond-Schneider Constant)
+        assert!(fee_amount_(231_406_926_328) == 115703464, 0); // e^pi  (Gelfond's Constant)
+        assert!(fee_amount_(6_931_471_806) == 3465736, 0); // ln(2) (Natural Logarithm of 2)
+        assert!(fee_amount_(10_986_122_887) == 5493062, 0); // ln(3) (Natural Logarithm of 3)
+        assert!(fee_amount_(5_859_874_482) == 2929938, 0); // pi+e
+        assert!(fee_amount_(4_233_108_251) == 2116555, 0); // pi-e
+        assert!(fee_amount_(44_428_829_382) == 22214415, 0); // pi.sqrt(2)
+        assert!(fee_amount_(38_442_310_282) == 19221156, 0); // esqrt(2)
+        assert!(fee_amount_(491_737_432) == 245869, 0); // phi^e
+        assert!(fee_amount_(17_724_538_509) == 8862270, 0); // sqrt(pi)
+        assert!(fee_amount_(41_132_503_788) == 20566252, 0); // e^(sqrt(2))
+        assert!(fee_amount_(29_706_864_236) == 14853433, 0); // sqrt(2)^pi
+        assert!(fee_amount_(22_214_414_691) == 11107208, 0); // pi/sqrt(2)
+        assert!(fee_amount_(19_221_155_141) == 9610578, 0); // e/sqrt(2)
     }
 }

@@ -1,6 +1,6 @@
 module dca::dca {
     // use std::debug::print;
-    use std::option::{Option, Self, none, is_some, borrow};
+    use std::option::{Option, Self, none, some, is_some, borrow};
     use sui::object::{Self, UID, ID};
     use sui::tx_context::{TxContext, sender};
     use sui::balance::{Self, Balance};
@@ -39,6 +39,8 @@ module dca::dca {
     const EUnfundedAccount: u64 = 14;
     const ENoRemainingOrders: u64 = 15;
     const ETotalOrdersAboveLimit: u64 = 16;
+    const EBaseAmountCantBeZero: u64 = 18;
+    const EQuoteAmountCantBeZero: u64 = 19;
     
     // IAM errors 
     const EInvalidOwner: u64 = 20;
@@ -60,6 +62,11 @@ module dca::dca {
     struct TradePromise<phantom Input, phantom Output> has drop {
         input: u64,
         min_output: u64,
+    }
+
+    struct Price has store, copy, drop {
+        base_val: u64,
+        quote_val: u64
     }
 
     struct DCA<phantom Input, phantom Output> has key, store {
@@ -96,8 +103,8 @@ module dca::dca {
 
     // Price defined in terms of: X units of Input per 1 unit of Output
     struct TradeParams has store, copy, drop {
-        min_price: Option<u64>,
-        max_price: Option<u64>,
+        min_price: Option<Price>,
+        max_price: Option<Price>,
     }
 
     // === Events ===
@@ -187,7 +194,7 @@ module dca::dca {
     }
     
     #[lint_allow(share_owned)]
-    public entry fun init_account_with_params<Input, Output>(
+    public fun init_account_with_params<Input, Output>(
         clock: &Clock,
         delegatee: address,
         outlay: Coin<Input>,
@@ -195,8 +202,7 @@ module dca::dca {
         total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
-        min_price: u64,
-        max_price: u64,
+        trade_params: TradeParams,
         ctx: &mut TxContext,
     ) {
         let dca = new_with_params<Input, Output>(
@@ -207,8 +213,51 @@ module dca::dca {
             total_orders,
             time_scale,
             gas_funds,
-            min_price,
-            max_price,
+            trade_params,
+            ctx,
+        );
+
+        transfer::share_object(dca);
+    }
+
+    #[lint_allow(share_owned)]
+    public entry fun init_account_with_params_flat<Input, Output>(
+        clock: &Clock,
+        delegatee: address,
+        outlay: Coin<Input>,
+        every: u64,
+        total_orders: u64,
+        time_scale: u8,
+        gas_funds: &mut Coin<SUI>,
+        min_price_base_int: u64,
+        min_price_quote_int: u64,
+        max_price_base_int: u64,
+        max_price_quote_int: u64,
+        ctx: &mut TxContext,
+    ) {
+        let min_price = if (min_price_base_int == 0 && min_price_quote_int == 0) {
+            none()
+        } else {
+            some(with_price(min_price_base_int, min_price_quote_int))
+        };
+        
+        let max_price = if (max_price_base_int == 0 && max_price_quote_int == 0) {
+            none()
+        } else {
+            some(with_price(max_price_base_int, max_price_quote_int))
+        };
+
+        let trade_params = with_trade_params(min_price, max_price);
+
+        let dca = new_with_params<Input, Output>(
+            clock,
+            delegatee,
+            outlay,
+            every,
+            total_orders,
+            time_scale,
+            gas_funds,
+            trade_params,
             ctx,
         );
 
@@ -223,8 +272,7 @@ module dca::dca {
         total_orders: u64,
         time_scale: u8,
         gas_funds: &mut Coin<SUI>,
-        min_price: u64,
-        max_price: u64,
+        trade_params: TradeParams,
         ctx: &mut TxContext,
     ): DCA<Input, Output> {
         let dca = new<Input, Output>(
@@ -237,11 +285,29 @@ module dca::dca {
             gas_funds,
             ctx,
         );
-
-        option::fill(&mut dca.trade_params.min_price, min_price);
-        option::fill(&mut dca.trade_params.max_price, max_price);
+        
+        dca.trade_params = trade_params;
 
         dca
+    }
+
+    public fun with_price(base_val: u64, quote_val: u64): Price {
+        assert!(base_val > 0, EBaseAmountCantBeZero);
+        assert!(quote_val > 0, EQuoteAmountCantBeZero);
+        Price {
+            base_val,
+            quote_val
+        }
+    }
+    
+    public fun with_trade_params(
+        min_price: Option<Price>,
+        max_price: Option<Price>
+    ): TradeParams {
+        TradeParams {
+            min_price,
+            max_price
+        }
     }
 
 
@@ -274,7 +340,7 @@ module dca::dca {
 
         // Compute and transfer fees to delegatee
         
-        let fee_amount = fee_amount(dca.split_allocation);
+        let fee_amount = fee_amount_(dca.split_allocation);
         let fees = coin::from_balance(balance::split(&mut input_funds, fee_amount), ctx);
         transfer::public_transfer(fees, dca.delegatee);
 
@@ -528,6 +594,40 @@ module dca::dca {
     public fun order_limit(): u64 { ORDER_LIMIT }
     public fun minimum_funding_per_trade(): u64 { MINIMUM_FUNDING_PER_TRADE }
 
+    public fun gross_trade_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        if (dca.remaining_orders > 1) {
+            dca.split_allocation
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            balance::value(&dca.input_balance)
+        }
+    }
+
+    public fun net_trade_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        let gross_amount: u64;
+        if (dca.remaining_orders > 1) {
+            gross_amount = dca.split_allocation;
+        } else {
+            // If its the last order we withdraw all the balance to
+            // compensate for the accumulated rounding differences.
+            gross_amount = balance::value(&dca.input_balance)
+        };
+
+        net_trade_amount_(gross_amount)
+    }
+
+    public fun fee_amount<Input, Output>(dca: &DCA<Input, Output>): u64 {
+        let gross_amount = gross_trade_amount(dca);
+
+        fee_amount_(gross_amount)
+    }
+
+
+    public(friend) fun funds_net_of_fees(amount: u64): u64 {
+        amount - fee_amount_(amount)
+    }
+
     // === Private Functions ===
 
     fun recompute_split_allocation<Input, Output>(dca: &mut DCA<Input, Output>) {
@@ -549,9 +649,16 @@ module dca::dca {
         div(input_amount, orders)
     }
 
-    fun compute_min_output(input_amount: u64, max_price: u64): u64 {
-        // Rounds down
-        div(input_amount, max_price)
+    fun compute_min_output(input_amount: u64, max_price: &Price): u64 {
+        div_by_price(input_amount, max_price)
+    }
+
+    fun mul_by_price(x: u64, price: &Price): u64 {
+        div(mul(x, price.base_val), price.quote_val)
+    }
+    
+    fun div_by_price(x: u64, price: &Price): u64 {
+        div(mul(x, price.quote_val), price.base_val)
     }
 
     fun set_inactive_and_reset<Input, Output>(dca: &mut DCA<Input, Output>) {
@@ -571,7 +678,7 @@ module dca::dca {
         } else {
             let max_price = option::borrow(&dca.trade_params.max_price);
 
-            let min_output = compute_min_output(input_amount, *max_price);
+            let min_output = compute_min_output(input_amount, max_price);
             min_output
         }
     }
@@ -689,18 +796,26 @@ module dca::dca {
             let max_price = borrow(&dca.trade_params.max_price);
 
             assert!(
-                input_amount <= mul(*max_price, output_amount),
+                input_amount <= mul_by_price(output_amount, max_price),
                 EAboveMaxPrice
             );
         }
     }
 
-    public(friend) fun fee_amount(amount: u64): u64 {
-        div(mul(amount, BASE_FEES_BPS), 10_000)
+    public(friend) fun fee_amount_(gross_amount: u64): u64 {
+        gross_amount - net_trade_amount_(gross_amount)
     }
-
-    public(friend) fun funds_net_of_fees(amount: u64): u64 {
-        amount - fee_amount(amount)
+    
+    public(friend) fun net_trade_amount_(gross_amount: u64): u64 {
+        if (gross_amount >= 1_844_674_407_370_955) {
+            // Reduce overflow risk
+            // Downscale first then upscale
+            mul(div(gross_amount, 10_000), 10_000 - BASE_FEES_BPS)
+        } else {
+            // Increase precision
+            // Upscale first then downscale
+            div(mul(gross_amount, 10_000 - BASE_FEES_BPS), 10_000)
+        }
     }
 
     // === Versioning ===
@@ -773,21 +888,60 @@ module dca::dca {
     
     #[test]
     fun test_compute_min_price() {
-        assert!(compute_min_output(100000, 3) == 33333, 0);
-        assert!(compute_min_output(100000, 33) == 3030, 0);
-        assert!(compute_min_output(100000, 333) == 300, 0);
-        assert!(compute_min_output(100000, 3333) == 30, 0);
-        assert!(compute_min_output(100000, 33333) == 3, 0);
-        assert!(compute_min_output(100000, 333333) == 0, 0);
-        assert!(compute_min_output(100000, 3333333) == 0, 0);
+        assert!(compute_min_output(100000, &with_price(3, 1)) == 33333, 0);
+        assert!(compute_min_output(100000, &with_price(33, 1)) == 3030, 0);
+        assert!(compute_min_output(100000, &with_price(333, 1)) == 300, 0);
+        assert!(compute_min_output(100000, &with_price(3333, 1)) == 30, 0);
+        assert!(compute_min_output(100000, &with_price(33333, 1)) == 3, 0);
+        assert!(compute_min_output(100000, &with_price(333333, 1)) == 0, 0);
+        assert!(compute_min_output(100000, &with_price(3333333, 1)) == 0, 0);
 
         // Rounds down
-        assert!(compute_min_output(777777, 3) == 259259, 0); // 259259
-        assert!(compute_min_output(777777, 33) == 23569, 0); // 23569
-        assert!(compute_min_output(777777, 333) == 2335, 0); // 2335.666667
-        assert!(compute_min_output(777777, 3333) == 233, 0); // 233.3564356
-        assert!(compute_min_output(777777, 33333) == 23, 0); // 23.33354334
-        assert!(compute_min_output(777777, 333333) == 2, 0); // 2.333333333
-        assert!(compute_min_output(777777, 3333333) == 0, 0); // 0.233333123
+        assert!(compute_min_output(777777, &with_price(3, 1)) == 259259, 0); // 259259
+        assert!(compute_min_output(777777, &with_price(33, 1)) == 23569, 0); // 23569
+        assert!(compute_min_output(777777, &with_price(333, 1)) == 2335, 0); // 2335.666667
+        assert!(compute_min_output(777777, &with_price(3333, 1)) == 233, 0); // 233.3564356
+        assert!(compute_min_output(777777, &with_price(33333, 1)) == 23, 0); // 23.33354334
+        assert!(compute_min_output(777777, &with_price(333333, 1)) == 2, 0); // 2.333333333
+        assert!(compute_min_output(777777, &with_price(3333333, 1)) == 0, 0); // 0.233333123
+    }
+    
+    #[test]
+    fun test_fee_amount() {
+        // print(&fee_amount_(1_333_333));
+        assert!(fee_amount_(1_333_333) == 667, 0);
+        assert!(fee_amount_(133_333) == 67, 0);
+        assert!(fee_amount_(13_333) == 7, 0);
+
+        assert!(fee_amount_(31_415_926_536) == 15707964, 0); // (Pi)
+        assert!(fee_amount_(27_182_818_285) == 13591410, 0); // e (Euler's Number)
+        assert!(fee_amount_(14_142_135_624) == 7071068, 0); // (Square Root of 2)
+        assert!(fee_amount_(17_320_508_076) == 8660255, 0); // (Square Root of 3)
+        assert!(fee_amount_(16_180_339_887) == 8090170, 0); // Golden Ratio
+        assert!(fee_amount_(22_360_679_775) == 11180340, 0); // (Square Root of 5)
+        assert!(fee_amount_(26_457_513_111) == 13228757, 0); // (Square Root of 7)
+        assert!(fee_amount_(33_166_247_904) == 16583124, 0); // (Square Root of 11)
+        assert!(fee_amount_(36_055_512_755) == 18027757, 0); // (Square Root of 13)
+        assert!(fee_amount_(41_231_056_256) == 20615529, 0); // (Square Root of 17)
+        assert!(fee_amount_(43_588_989_435) == 21794495, 0); // (Square Root of 19)
+        assert!(fee_amount_(47_958_315_233) == 23979158, 0); // (Square Root of 23)
+        assert!(fee_amount_(53_851_648_071) == 26925825, 0); // (Square Root of 29)
+        assert!(fee_amount_(55_677_643_628) == 27838822, 0); // (Square Root of 31)
+        assert!(fee_amount_(60_827_625_303) == 30413813, 0); // (Square Root of 37)
+        assert!(fee_amount_(98_696_044_011) == 49348023, 0); // pi^2
+        assert!(fee_amount_(26_651_441_427) == 13325721, 0); // 2^sqrt(2) (Gelfond-Schneider Constant)
+        assert!(fee_amount_(231_406_926_328) == 115703464, 0); // e^pi  (Gelfond's Constant)
+        assert!(fee_amount_(6_931_471_806) == 3465736, 0); // ln(2) (Natural Logarithm of 2)
+        assert!(fee_amount_(10_986_122_887) == 5493062, 0); // ln(3) (Natural Logarithm of 3)
+        assert!(fee_amount_(5_859_874_482) == 2929938, 0); // pi+e
+        assert!(fee_amount_(4_233_108_251) == 2116555, 0); // pi-e
+        assert!(fee_amount_(44_428_829_382) == 22214415, 0); // pi.sqrt(2)
+        assert!(fee_amount_(38_442_310_282) == 19221156, 0); // esqrt(2)
+        assert!(fee_amount_(491_737_432) == 245869, 0); // phi^e
+        assert!(fee_amount_(17_724_538_509) == 8862270, 0); // sqrt(pi)
+        assert!(fee_amount_(41_132_503_788) == 20566252, 0); // e^(sqrt(2))
+        assert!(fee_amount_(29_706_864_236) == 14853433, 0); // sqrt(2)^pi
+        assert!(fee_amount_(22_214_414_691) == 11107208, 0); // pi/sqrt(2)
+        assert!(fee_amount_(19_221_155_141) == 9610578, 0); // e/sqrt(2)
     }
 }

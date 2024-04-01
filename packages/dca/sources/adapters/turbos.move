@@ -10,15 +10,20 @@ module dca::turbos {
     use sui::balance;
     use dca::dca::{Self, DCA, init_trade, resolve_trade};
 
+    const EAmountParamNotEqualToTradeAmount: u64 = 0;
+	const ECoinInputMustBeEmpty: u64 = 1;
+	const ERecipientAddressNotDcaOwner: u64 = 2;
+	const EExactInMustBeTrue: u64 = 3;
+
     public fun swap_a_b<CoinTypeA, CoinTypeB, FeeType>(
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
         coin_a: Coin<CoinTypeA>,
 		// Exact input amount
-        _amount: u64, // todo assert
+        amount: u64, // todo assert
         amount_threshold: u64, // Minimum output amount
         sqrt_price_limit: u128,
-        _is_exact_in: bool,
-        _receiver: address, 
+        is_exact_in: bool,
+        recipient: address, 
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -26,10 +31,12 @@ module dca::turbos {
         gas_cost: u64,
 		ctx: &mut TxContext
     ) {
-        let is_exact_in = true;
+        assert!(is_exact_in == true, EExactInMustBeTrue);
+        assert!(recipient == dca::owner(dca), ERecipientAddressNotDcaOwner);
 
         let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = balance::value(&funds);
+        let real_amount = balance::value(&funds);
+        assert!(amount == real_amount, EAmountParamNotEqualToTradeAmount);
         balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
@@ -37,7 +44,7 @@ module dca::turbos {
         swap_router::swap_a_b(
             pool,
             vector[coin_a],
-            amount,
+            real_amount,
             amount_threshold,
             sqrt_price_limit,
             is_exact_in,
@@ -56,11 +63,11 @@ module dca::turbos {
 		pool: &mut Pool<CoinTypeA, CoinTypeB, FeeType>,
         coin_b: Coin<CoinTypeB>,
 		// Exact input amount
-        _amount: u64, // todo assert
+        amount: u64, // todo assert
         amount_threshold: u64,
         sqrt_price_limit: u128,
-        _is_exact_in: bool,
-        _receiver: address, 
+        is_exact_in: bool,
+        recipient: address, 
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -68,10 +75,12 @@ module dca::turbos {
         gas_cost: u64,
 		ctx: &mut TxContext
     ) {
-        let is_exact_in = true;
+        assert!(is_exact_in == true, EExactInMustBeTrue);
+        assert!(recipient == dca::owner(dca), ERecipientAddressNotDcaOwner);
 
         let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = balance::value(&funds);
+        let real_amount = balance::value(&funds);
+        assert!(amount == real_amount, EAmountParamNotEqualToTradeAmount);
         balance::join(coin::balance_mut(&mut coin_b), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
@@ -79,7 +88,7 @@ module dca::turbos {
         swap_router::swap_b_a(
             pool,
             vector[coin_b],
-            amount,
+            real_amount,
             amount_threshold,
             sqrt_price_limit,
             is_exact_in,
@@ -99,12 +108,12 @@ module dca::turbos {
         pool_b: &mut Pool<CoinTypeB, CoinTypeC, FeeTypeB>,
         coin_a: Coin<CoinTypeA>,
 		// Exact input amount
-        _amount: u64, // todo assert
+        amount: u64, // todo assert
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        _is_exact_in: bool,
-        _receiver: address,
+        is_exact_in: bool,
+        recipient: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -112,9 +121,12 @@ module dca::turbos {
         gas_cost: u64,
 		ctx: &mut TxContext
     ) {
-        let is_exact_in = true;
+        assert!(is_exact_in == true, EExactInMustBeTrue);
+        assert!(recipient == dca::owner(dca), ERecipientAddressNotDcaOwner);
+
         let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = balance::value(&funds);
+        let real_amount = balance::value(&funds);
+        assert!(amount == real_amount, EAmountParamNotEqualToTradeAmount);
         balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
@@ -123,7 +135,7 @@ module dca::turbos {
             pool_a,
             pool_b,
             vector[coin_a],
-            amount,
+            real_amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,
@@ -144,12 +156,12 @@ module dca::turbos {
         pool_b: &mut Pool<CoinTypeC, CoinTypeB, FeeTypeB>,
         coin_a: Coin<CoinTypeA>,
 		// Exact input amount
-        _amount: u64, // todo assert
+        amount: u64, // todo assert
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        _is_exact_in: bool,
-        _receiver: address,
+        is_exact_in: bool,
+        recipient: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -157,9 +169,12 @@ module dca::turbos {
         gas_cost: u64,
 		ctx: &mut TxContext
     ) {
-        let is_exact_in = true;
+        assert!(is_exact_in == true, EExactInMustBeTrue);
+        assert!(recipient == dca::owner(dca), ERecipientAddressNotDcaOwner);
+
         let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = balance::value(&funds);
+        let real_amount = balance::value(&funds);
+        assert!(amount == real_amount, EAmountParamNotEqualToTradeAmount);
         balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
@@ -168,7 +183,7 @@ module dca::turbos {
             pool_a,
             pool_b,
             vector[coin_a],
-            amount,
+            real_amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,
@@ -189,12 +204,12 @@ module dca::turbos {
         pool_b: &mut Pool<CoinTypeB, CoinTypeC, FeeTypeB>,
         coin_a: Coin<CoinTypeA>,
 		// Exact input amount
-        _amount: u64, // todo assert
+        amount: u64, // todo assert
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        _is_exact_in: bool,
-        _receiver: address,
+        is_exact_in: bool,
+        recipient: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -202,9 +217,12 @@ module dca::turbos {
         gas_cost: u64,
 		ctx: &mut TxContext
     ) {
-        let is_exact_in = true;
+        assert!(is_exact_in == true, EExactInMustBeTrue);
+        assert!(recipient == dca::owner(dca), ERecipientAddressNotDcaOwner);
+
         let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = balance::value(&funds);
+        let real_amount = balance::value(&funds);
+        assert!(amount == real_amount, EAmountParamNotEqualToTradeAmount);
         balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
@@ -213,7 +231,7 @@ module dca::turbos {
             pool_a,
             pool_b,
             vector[coin_a],
-            amount,
+            real_amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,
@@ -234,12 +252,12 @@ module dca::turbos {
         pool_b: &mut Pool<CoinTypeC, CoinTypeB, FeeTypeB>,
         coin_a: Coin<CoinTypeA>,
 		// Exact input amount
-        _amount: u64, // todo assert
+        amount: u64, // todo assert
         amount_threshold: u64,
         sqrt_price_limit_one: u128,
         sqrt_price_limit_two: u128,
-        _is_exact_in: bool,
-        _receiver: address,
+        is_exact_in: bool,
+        recipient: address,
         deadline: u64,
         clock: &Clock,
         versioned: &Versioned,
@@ -247,9 +265,12 @@ module dca::turbos {
         gas_cost: u64,
 		ctx: &mut TxContext
     ) {
-        let is_exact_in = true;
+        assert!(is_exact_in == true, EExactInMustBeTrue);
+        assert!(recipient == dca::owner(dca), ERecipientAddressNotDcaOwner);
+        
         let (funds, promise) = init_trade(dca, clock, ctx);
-        let amount = balance::value(&funds);
+        let real_amount = balance::value(&funds);
+        assert!(amount == real_amount, EAmountParamNotEqualToTradeAmount);
         balance::join(coin::balance_mut(&mut coin_a), funds);
 
         dca::assert_max_price_via_output(amount_threshold, &promise);
@@ -258,7 +279,7 @@ module dca::turbos {
             pool_a,
             pool_b,
             vector[coin_a],
-            amount,
+            real_amount,
             amount_threshold,
             sqrt_price_limit_one,
             sqrt_price_limit_two,

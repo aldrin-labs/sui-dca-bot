@@ -14,6 +14,7 @@ module dca::dca {
     use dca::math::{mul, div};
 
     friend dca::cetus;
+    friend dca::cetus2;
     friend dca::flow_x;
     friend dca::turbos;
 
